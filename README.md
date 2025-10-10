@@ -2,7 +2,7 @@
 
 Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan terintegrasi dengan ATAMS (Atlas Authentication & Management System). Sistem ini menyediakan REST API lengkap untuk mengelola project, task, komentar, attachment, history, label, dan watcher.
 
-## =� Daftar Isi
+## Daftar Isi
 
 - [Fitur Utama](#fitur-utama)
 - [Teknologi](#teknologi)
@@ -23,7 +23,7 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
 - [Response Format](#response-format)
 - [Authentication](#authentication)
 
-## =� Fitur Utama
+## Fitur Utama
 
 - **Manajemen Project**: CRUD lengkap untuk project dengan statistik task
 - **Manajemen Task**: CRUD task dengan support sub-task, prioritas, status, dan tipe
@@ -39,7 +39,7 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
 - **Atlas SSO Integration**: Autentikasi terintegrasi dengan ATAMS
 - **Role-based Access**: Kontrol akses berdasarkan role level user
 
-## =� Teknologi
+## Teknologi
 
 - **Framework**: FastAPI (Python 3.8+)
 - **Database**: PostgreSQL
@@ -48,11 +48,11 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
 - **Validation**: Pydantic
 - **Server**: Uvicorn
 
-## =� Instalasi
+## Instalasi
 
 1. **Clone repository**
 ```bash
-git clone <repository-url>
+git clone https://github.com/GratiaManullang03/atask.git
 cd atask
 ```
 
@@ -76,7 +76,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## � Konfigurasi
+## Konfigurasi
 
 Buat file `.env` di root folder project dengan konfigurasi berikut:
 
@@ -113,7 +113,7 @@ LOG_TO_FILE=true
 LOG_FILE_PATH=logs/atask.log
 ```
 
-## <� Menjalankan Aplikasi
+## Menjalankan Aplikasi
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -124,7 +124,7 @@ Aplikasi akan berjalan di `http://localhost:8000`
 - **API Documentation (Swagger)**: http://localhost:8000/docs
 - **API Documentation (ReDoc)**: http://localhost:8000/redoc
 
-## =� API Endpoints
+## API Endpoints
 
 Base URL: `/api/v1`
 
@@ -615,7 +615,7 @@ GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 
 **Response:** `200 OK` dengan pagination
 
-## = Penjelasan Parameter Unik
+## Penjelasan Parameter Unik
 
 ### Project Parameters
 
@@ -741,7 +741,7 @@ GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 | `mtt_description` | Text | Deskripsi dari tipe task |
 | `mtt_is_active` | Boolean | Status aktif/nonaktif tipe task |
 
-## =� Response Format
+## Response Format
 
 ### Success Response dengan Data
 ```json
@@ -774,7 +774,7 @@ GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 }
 ```
 
-## = Authentication
+## Authentication
 
 Semua endpoint memerlukan authentication header:
 
@@ -786,7 +786,7 @@ Token didapat dari Atlas SSO. Setiap request akan divalidasi dengan Atlas dan me
 
 **Minimum Role Level**: Sebagian besar endpoint memerlukan role level minimal 10.
 
-## =� Audit Fields
+## Audit Fields
 
 Setiap tabel memiliki audit fields untuk tracking:
 
@@ -795,11 +795,11 @@ Setiap tabel memiliki audit fields untuk tracking:
 - `updated_by` - Username/ID yang terakhir update
 - `updated_at` - Timestamp update terakhir
 
-## = Response Encryption
+## Response Encryption
 
 Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true` di environment variable. Client perlu mendekripsi response dengan key dan IV yang sesuai.
 
-## =� Catatan Penting
+## Catatan Penting
 
 1. **Soft Delete**: Sistem menggunakan hard delete. Pertimbangkan implementasi soft delete untuk data penting.
 
@@ -828,7 +828,7 @@ Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true` di enviro
    - Database sudah menggunakan indexing untuk kolom yang sering di-query
    - Response data ter-enkripsi jika enabled untuk keamanan ekstra
 
-## =� License
+## License
 
 [Specify your license here]
 
@@ -836,6 +836,6 @@ Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true` di enviro
 
 [List contributors or link to contributors page]
 
-## =� Support
+## Support
 
 Untuk pertanyaan atau issue, silakan hubungi tim development atau buat issue di repository.
