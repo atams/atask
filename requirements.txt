@@ -1,0 +1,14 @@
+# ATAMS Toolkit (includes fastapi, sqlalchemy, pydantic, email-validator, etc.)
+atams>=1.0.0
+
+# Database Driver
+psycopg2-binary>=2.9.0  # PostgreSQL
+
+# FastAPI Server
+uvicorn[standard]>=0.24.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# File Upload Support
+python-multipart>=0.0.20
