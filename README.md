@@ -827,15 +827,3 @@ Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true` di enviro
 6. **Performance**:
    - Database sudah menggunakan indexing untuk kolom yang sering di-query
    - Response data ter-enkripsi jika enabled untuk keamanan ekstra
-
-## License
-
-[Specify your license here]
-
-## =e Contributors
-
-[List contributors or link to contributors page]
-
-## Support
-
-Untuk pertanyaan atau issue, silakan hubungi tim development atau buat issue di repository.
