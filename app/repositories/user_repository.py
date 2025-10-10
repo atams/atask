@@ -47,3 +47,13 @@ class UserRepository(BaseRepository[Task]):
 
         result = self.execute_raw_sql_dict(db, query, params)
         return result[0]["count"] if result else 0
+
+    def get_user_by_id(self, db: Session, u_id: int):
+        """Get user by ID from pt_atams_indonesia.users table"""
+        query = """
+            SELECT u_id, u_username, u_email, u_full_name
+            FROM pt_atams_indonesia.users
+            WHERE u_id = :u_id
+        """
+        result = self.execute_raw_sql_dict(db, query, {"u_id": u_id})
+        return result[0] if result else None

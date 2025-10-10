@@ -48,4 +48,7 @@ class TaskCommentInDB(TaskCommentBase):
 
 
 class TaskComment(TaskCommentInDB):
-    pass
+    # Additional fields from joins
+    tc_task_title: Optional[str] = None
+    tc_user_name: Optional[str] = None
+    tc_user_email: Optional[str] = None

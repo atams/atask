@@ -13,31 +13,32 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
   - [Master Data](#master-data)
   - [Projects](#projects)
   - [Tasks](#tasks)
-  - [Comments](#comments)
-  - [Attachments](#attachments)
-  - [History](#history)
+  - [Nested Resources](#nested-resources)
   - [Labels](#labels)
-  - [Watchers](#watchers)
   - [Users](#users)
 - [Penjelasan Parameter Unik](#penjelasan-parameter-unik)
 - [Response Format](#response-format)
-- [Authentication](#authentication)
+- [Authentication & Authorization](#authentication--authorization)
+- [Validation Rules](#validation-rules)
 
 ## Fitur Utama
 
-- **Manajemen Project**: CRUD lengkap untuk project dengan statistik task
+- **Manajemen Project**: CRUD lengkap untuk project dengan statistik task dan auto-join owner information
 - **Manajemen Task**: CRUD task dengan support sub-task, prioritas, status, dan tipe
+- **Auto-Generated Task Code**: Task code otomatis dihasilkan berdasarkan project dan tipe task
+- **Task Duration Auto-Calculate**: Durasi otomatis dihitung dalam jam dari start_date sampai due_date
 - **Komentar & Diskusi**: Sistem komentar dengan threading (reply to comment)
 - **File Attachment**: Upload dan download file untuk setiap task ⚠️ *Under Development*
-- **Audit Trail**: Otomatis tracking perubahan task di history
-- **Labeling System**: Tag/label fleksibel untuk kategorisasi task
-- **Task Watcher**: Subscribe untuk mendapat notifikasi perubahan task
+- **Immutable Audit Trail**: Otomatis tracking perubahan task di history (log-only, tidak bisa diubah/dihapus)
+- **Labeling System**: Tag/label fleksibel untuk kategorisasi task dengan bulk operations
+- **Task Watcher**: Subscribe untuk mendapat notifikasi perubahan task dengan bulk operations
 - **Advanced Search**: Pencarian task dengan multiple filter
 - **Bulk Operations**: Update status multiple task sekaligus
 - **User Dashboard**: Dashboard personal dengan statistik dan aktivitas
 - **Response Encryption**: Enkripsi otomatis untuk response data (opsional)
 - **Atlas SSO Integration**: Autentikasi terintegrasi dengan ATAMS
 - **Role-based Access**: Kontrol akses berdasarkan role level user
+- **Creator-only Modification**: Hanya pembuat (creator) yang bisa update/delete resource
 
 ## Teknologi
 
@@ -136,8 +137,8 @@ Endpoint untuk mengelola master data status task (To Do, In Progress, Done, dll)
 - `GET /api/v1/master-statuses` - Get all status
 - `GET /api/v1/master-statuses/{ms_id}` - Get status by ID
 - `POST /api/v1/master-statuses` - Create new status
-- `PUT /api/v1/master-statuses/{ms_id}` - Update status
-- `DELETE /api/v1/master-statuses/{ms_id}` - Delete status
+- `PUT /api/v1/master-statuses/{ms_id}` - Update status (creator only)
+- `DELETE /api/v1/master-statuses/{ms_id}` - Delete status (creator only)
 
 #### Master Priority
 Endpoint untuk mengelola master data prioritas task (Low, Medium, High, Critical).
@@ -145,8 +146,8 @@ Endpoint untuk mengelola master data prioritas task (Low, Medium, High, Critical
 - `GET /api/v1/master-priorities` - Get all priorities
 - `GET /api/v1/master-priorities/{mp_id}` - Get priority by ID
 - `POST /api/v1/master-priorities` - Create new priority
-- `PUT /api/v1/master-priorities/{mp_id}` - Update priority
-- `DELETE /api/v1/master-priorities/{mp_id}` - Delete priority
+- `PUT /api/v1/master-priorities/{mp_id}` - Update priority (creator only)
+- `DELETE /api/v1/master-priorities/{mp_id}` - Delete priority (creator only)
 
 #### Master Task Type
 Endpoint untuk mengelola master data tipe task (Task, Bug, Feature, dll).
@@ -154,8 +155,8 @@ Endpoint untuk mengelola master data tipe task (Task, Bug, Feature, dll).
 - `GET /api/v1/master-task-types` - Get all task types
 - `GET /api/v1/master-task-types/{mtt_id}` - Get task type by ID
 - `POST /api/v1/master-task-types` - Create new task type
-- `PUT /api/v1/master-task-types/{mtt_id}` - Update task type
-- `DELETE /api/v1/master-task-types/{mtt_id}` - Delete task type
+- `PUT /api/v1/master-task-types/{mtt_id}` - Update task type (creator only)
+- `DELETE /api/v1/master-task-types/{mtt_id}` - Delete task type (creator only)
 
 ### Projects
 
@@ -177,30 +178,28 @@ POST /api/v1/projects
 }
 ```
 
-**Response:** `201 Created`
+**Response:** `201 Created` dengan field tambahan `prj_owner_name` (auto-joined)
 
 #### Get All Projects
 ```http
 GET /api/v1/projects?skip=0&limit=100
 ```
 
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-
-**Response:** `200 OK` dengan pagination
+**Response:** `200 OK` - Semua project dengan `prj_owner_name` (auto-joined)
 
 #### Get Project by ID
 ```http
 GET /api/v1/projects/{prj_id}
 ```
 
-**Response:** `200 OK`
+**Response:** `200 OK` - Detail project dengan `prj_owner_name` (auto-joined)
 
 #### Update Project
 ```http
 PUT /api/v1/projects/{prj_id}
 ```
+
+**Authorization:** ⚠️ **Only creator (created_by) can update**
 
 **Request Body:** (semua field opsional)
 ```json
@@ -212,21 +211,53 @@ PUT /api/v1/projects/{prj_id}
 }
 ```
 
-**Response:** `200 OK`
+**Response:** `200 OK` atau `403 Forbidden` jika bukan creator
 
 #### Delete Project
 ```http
 DELETE /api/v1/projects/{prj_id}
 ```
 
-**Response:** `204 No Content`
+**Authorization:** ⚠️ **Only creator (created_by) can delete**
+
+**Response:** `204 No Content` atau `403 Forbidden`
 
 #### Get Project Statistics
 ```http
 GET /api/v1/projects/{prj_id}/statistics
 ```
 
-**Response:** `200 OK` - Statistik lengkap task di project (jumlah by status, priority, type, overdue, dll)
+**Response:** `200 OK` - Statistik lengkap dengan struktur nested:
+```json
+{
+  "prj_id": 1,
+  "prj_name": "Website Redesign",
+  "total_tasks": 50,
+  "by_status": {
+    "TODO": 10,
+    "IN_PROGRESS": 15,
+    "IN_REVIEW": 5,
+    "DONE": 18,
+    "CANCELLED": 2
+  },
+  "by_priority": {
+    "LOW": 8,
+    "MEDIUM": 20,
+    "HIGH": 15,
+    "CRITICAL": 7
+  },
+  "by_type": {
+    "TASK": 25,
+    "BUG": 12,
+    "FEATURE": 8,
+    "IMPROVEMENT": 3,
+    "RESEARCH": 2
+  },
+  "overdue_tasks": 3,
+  "completion_rate": 0.36,
+  "average_completion_time": 72.5
+}
+```
 
 ### Tasks
 
@@ -238,7 +269,6 @@ POST /api/v1/tasks
 **Request Body:**
 ```json
 {
-  "tsk_code": "TSK-001",
   "tsk_title": "Design homepage mockup",
   "tsk_description": "Create high-fidelity mockup for homepage redesign",
   "tsk_prj_id": 1,
@@ -248,36 +278,51 @@ POST /api/v1/tasks
   "tsk_assignee_u_id": 456,
   "tsk_reporter_u_id": 123,
   "tsk_start_date": "2025-01-20T09:00:00Z",
-  "tsk_due_date": "2025-01-25T17:00:00Z",
-  "tsk_duration": 40.00,
   "tsk_parent_tsk_id": null
 }
 ```
 
-**Response:** `201 Created`
+**Important Notes:**
+- ✅ `tsk_code` is **auto-generated** (format: `{prj_id}/{task_type_code}/{number}`)
+- ❌ `tsk_due_date` **cannot be set at creation** (only assignee can set it later)
+- ❌ `tsk_duration` **is auto-calculated** (read-only, in hours)
+
+**Response:** `201 Created` dengan joins:
+```json
+{
+  "tsk_code": "001/TASK/001",
+  "tsk_title": "Design homepage mockup",
+  "tsk_duration": null,
+  "tsk_project_name": "Website Redesign",
+  "tsk_status_name": "To Do",
+  "tsk_priority_name": "High",
+  "tsk_priority_color": "#FF9800",
+  "tsk_type_name": "Task",
+  "tsk_assignee_name": "John Doe",
+  "tsk_reporter_name": "Jane Smith"
+}
+```
 
 #### Get All Tasks
 ```http
 GET /api/v1/tasks?skip=0&limit=100
 ```
 
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-
-**Response:** `200 OK` dengan pagination
+**Response:** `200 OK` - All tasks dengan auto-joins (project_name, status_name, dll)
 
 #### Get Task by ID
 ```http
 GET /api/v1/tasks/{tsk_id}
 ```
 
-**Response:** `200 OK` - Detail lengkap task dengan relasi (labels, watchers, attachments, subtasks)
+**Response:** `200 OK` - Detail lengkap dengan auto-joins
 
 #### Update Task
 ```http
 PUT /api/v1/tasks/{tsk_id}
 ```
+
+**Authorization:** ⚠️ **Only creator (created_by) can update**
 
 **Request Body:** (semua field opsional)
 ```json
@@ -287,18 +332,28 @@ PUT /api/v1/tasks/{tsk_id}
   "tsk_ms_id": 2,
   "tsk_mp_id": 4,
   "tsk_assignee_u_id": 789,
-  "tsk_due_date": "2025-01-28T17:00:00Z"
+  "tsk_start_date": "2025-01-20T09:00:00Z",
+  "tsk_due_date": "2025-01-25T17:00:00Z"
 }
 ```
 
-**Response:** `200 OK`
+**Special Rules:**
+- ✅ `tsk_due_date` **can only be set by assignee** (or null to clear)
+- ✅ `due_date >= start_date` (validation error jika due_date lebih awal)
+- ✅ `tsk_duration` **auto-calculated in hours** dari (due_date - start_date)
+- ❌ `tsk_duration` **cannot be manually set** (read-only)
+- ❌ Non-creator **cannot update task** (403 Forbidden)
+
+**Response:** `200 OK` atau `400 Bad Request` atau `403 Forbidden`
 
 #### Delete Task
 ```http
 DELETE /api/v1/tasks/{tsk_id}
 ```
 
-**Response:** `204 No Content`
+**Authorization:** ⚠️ **Only creator (created_by) can delete**
+
+**Response:** `204 No Content` atau `403 Forbidden`
 
 #### Bulk Update Status
 ```http
@@ -337,15 +392,18 @@ POST /api/v1/tasks/search
 }
 ```
 
-**Response:** `200 OK` dengan pagination
+**Response:** `200 OK` dengan pagination dan auto-joins
 
-### Comments
+### Nested Resources
 
-#### Create Comment
+> **Important:** Comments, History, Labels, dan Watchers adalah nested resources di bawah task.
+> Standalone endpoints (`/api/v1/comments`, `/api/v1/history`, dll) **sudah dihapus**.
+
+#### Task Comments
+
 ```http
 POST /api/v1/tasks/{tsk_id}/comments
 ```
-
 **Request Body:**
 ```json
 {
@@ -354,115 +412,83 @@ POST /api/v1/tasks/{tsk_id}/comments
 }
 ```
 
-**Response:** `201 Created`
-
-#### Get All Comments for Task
 ```http
 GET /api/v1/tasks/{tsk_id}/comments?skip=0&limit=100
 ```
+**Response:** List comments dengan auto-joins: `tc_task_title`, `tc_user_name`, `tc_user_email`
 
-**Response:** `200 OK` dengan pagination
+#### Task History (Audit Log)
 
-#### Get Comment by ID
-```http
-GET /api/v1/comments/{tc_id}
-```
-
-**Response:** `200 OK`
-
-#### Update Comment
-```http
-PUT /api/v1/comments/{tc_id}
-```
-
-**Request Body:**
-```json
-{
-  "tc_comment": "Updated comment text"
-}
-```
-
-**Response:** `200 OK`
-
-#### Delete Comment
-```http
-DELETE /api/v1/comments/{tc_id}
-```
-
-**Response:** `204 No Content`
-
-### Attachments
-
-> **⚠️ UNDER DEVELOPMENT**: Fitur attachment sedang dalam pengembangan. Semua endpoint attachment akan mengembalikan response `"Attachment feature is currently under development"` untuk sementara waktu.
-
-#### Upload Attachment
-```http
-POST /api/v1/tasks/{tsk_id}/attachments
-Content-Type: multipart/form-data
-```
-
-**Request Body:**
-```
-file: [binary file]
-```
-
-**Response:** `201 Created` (Under Development)
-```json
-{
-  "success": false,
-  "message": "Attachment feature is currently under development",
-  "data": null
-}
-```
-
-#### Get All Attachments for Task
-```http
-GET /api/v1/tasks/{tsk_id}/attachments
-```
-
-**Response:** `200 OK` (Under Development)
-
-#### Get Attachment by ID
-```http
-GET /api/v1/attachments/{ta_id}
-```
-
-**Response:** `200 OK` (Under Development)
-
-#### Download Attachment
-```http
-GET /api/v1/attachments/{ta_id}/download
-```
-
-**Response:** (Under Development)
-
-#### Delete Attachment
-```http
-DELETE /api/v1/attachments/{ta_id}
-```
-
-**Response:** `204 No Content` (Under Development)
-
-### History
-
-#### Get Task History
 ```http
 GET /api/v1/tasks/{tsk_id}/history?skip=0&limit=100&field_name=status
 ```
 
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-- `field_name` (optional) - Filter by specific field name (status, priority, assignee, dll)
+**Important:**
+- 📝 History adalah **immutable audit log**
+- ✅ **Auto-created** saat task diupdate
+- ✅ **Only GET** endpoint available
+- ❌ **NO POST/PUT/DELETE** endpoints (tidak bisa manual create/update/delete)
+- ❌ **NO updated_by/updated_at** fields (log is immutable)
 
-**Response:** `200 OK` dengan pagination
+**Response:** List history dengan auto-joins: `th_task_title`, `th_user_name`
 
-#### Get History by ID
+**Tracked Fields:**
+- `title`, `description`, `status`, `priority`, `assignee`, `due_date`, `start_date`
+
+#### Task Labels
+
 ```http
-GET /api/v1/history/{th_id}
+POST /api/v1/tasks/{tsk_id}/labels
+```
+**Request Body:**
+```json
+{
+  "tl_lbl_id": 1
+}
 ```
 
-**Response:** `200 OK`
+```http
+GET /api/v1/tasks/{tsk_id}/labels
+```
+**Response:** List labels dengan auto-joins: `tl_task_title`, `tl_label_name`, `tl_label_color`
+
+```http
+DELETE /api/v1/tasks/{tsk_id}/labels/{lbl_ids}
+```
+**Bulk Delete:** `lbl_ids` bisa comma-separated (e.g., `1,2,3`)
+
+#### Task Watchers
+
+```http
+POST /api/v1/tasks/{tsk_id}/watchers
+```
+**Request Body:**
+```json
+{
+  "tw_u_id": 789
+}
+```
+
+```http
+GET /api/v1/tasks/{tsk_id}/watchers
+```
+**Response:** List watchers dengan auto-joins: `tw_task_title`, `tw_user_name`, `tw_user_email`
+
+```http
+DELETE /api/v1/tasks/{tsk_id}/watchers/{u_ids}
+```
+**Bulk Delete:** `u_ids` bisa comma-separated (e.g., `2,3,4`)
+
+#### Task Attachments
+
+> **⚠️ UNDER DEVELOPMENT**: Semua endpoint akan return `"Attachment feature is currently under development"`
+
+```http
+POST /api/v1/tasks/{tsk_id}/attachments
+```
+```http
+GET /api/v1/tasks/{tsk_id}/attachments
+```
 
 ### Labels
 
@@ -480,107 +506,25 @@ POST /api/v1/labels
 }
 ```
 
-**Response:** `201 Created`
-
 #### Get All Labels
 ```http
 GET /api/v1/labels?skip=0&limit=100&search=frontend
 ```
-
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-- `search` (optional) - Search by label name
-
-**Response:** `200 OK` dengan pagination
 
 #### Get Label by ID
 ```http
 GET /api/v1/labels/{lbl_id}
 ```
 
-**Response:** `200 OK` - Detail label dengan list task yang menggunakan label ini
-
 #### Update Label
 ```http
 PUT /api/v1/labels/{lbl_id}
 ```
 
-**Request Body:**
-```json
-{
-  "lbl_name": "frontend-ui",
-  "lbl_color": "#3498db",
-  "lbl_description": "Frontend UI/UX related tasks"
-}
-```
-
-**Response:** `200 OK`
-
 #### Delete Label
 ```http
 DELETE /api/v1/labels/{lbl_id}
 ```
-
-**Response:** `204 No Content`
-
-#### Assign Label to Task
-```http
-POST /api/v1/tasks/{tsk_id}/labels
-```
-
-**Request Body:**
-```json
-{
-  "lbl_id": 1
-}
-```
-
-**Response:** `201 Created`
-
-#### Get All Labels for Task
-```http
-GET /api/v1/tasks/{tsk_id}/labels
-```
-
-**Response:** `200 OK` - List label untuk task tertentu
-
-#### Remove Label from Task
-```http
-DELETE /api/v1/tasks/{tsk_id}/labels/{lbl_id}
-```
-
-**Response:** `204 No Content`
-
-### Watchers
-
-#### Add Watcher to Task
-```http
-POST /api/v1/tasks/{tsk_id}/watchers
-```
-
-**Request Body:**
-```json
-{
-  "u_id": 789
-}
-```
-
-**Response:** `201 Created`
-
-#### Get All Watchers for Task
-```http
-GET /api/v1/tasks/{tsk_id}/watchers
-```
-
-**Response:** `200 OK` - List user yang watch task ini
-
-#### Remove Watcher from Task
-```http
-DELETE /api/v1/tasks/{tsk_id}/watchers/{u_id}
-```
-
-**Response:** `204 No Content`
 
 ### Users
 
@@ -589,31 +533,19 @@ DELETE /api/v1/tasks/{tsk_id}/watchers/{u_id}
 GET /api/v1/users?skip=0&limit=100&search=john
 ```
 
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-- `search` (optional) - Search by username, email, or full name
-
-**Response:** `200 OK` dengan pagination
+**Response:** List users dari Atlas SSO
 
 #### Get User Dashboard
 ```http
 GET /api/v1/users/{u_id}/dashboard
 ```
 
-**Response:** `200 OK` - Dashboard user dengan statistik (assigned tasks, reported tasks, watched tasks, recent activities)
+**Response:** Dashboard user dengan statistik (assigned tasks, reported tasks, watched tasks, recent activities)
 
 #### Get Watched Tasks by User
 ```http
 GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 ```
-
-**Query Parameters:**
-- `skip` (optional, default: 0) - Number of records to skip
-- `limit` (optional, default: 100) - Maximum records to return
-- `status_id` (optional) - Filter by status ID
-
-**Response:** `200 OK` dengan pagination
 
 ## Penjelasan Parameter Unik
 
@@ -622,124 +554,57 @@ GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 | Parameter | Tipe | Deskripsi |
 |-----------|------|-----------|
 | `prj_id` | Integer | ID unik project (Primary Key) |
-| `prj_code` | String | Kode project yang unique, contoh: "PROJ-001", "WEBSITE-REDESIGN" |
+| `prj_code` | String | Kode project yang unique |
 | `prj_name` | String | Nama project |
 | `prj_description` | Text | Deskripsi lengkap project |
-| `prj_start_date` | Date | Tanggal mulai project (format: YYYY-MM-DD) |
-| `prj_end_date` | Date | Target tanggal selesai project (format: YYYY-MM-DD) |
-| `prj_u_id` | Integer | ID user yang menjadi owner/penanggung jawab project (Foreign Key ke tabel users) |
-| `prj_is_active` | Boolean | Status apakah project masih aktif atau sudah selesai/ditutup |
+| `prj_start_date` | Date | Tanggal mulai project |
+| `prj_end_date` | Date | Target tanggal selesai project |
+| `prj_u_id` | Integer | ID user owner project |
+| `prj_owner_name` | String | **Auto-joined** nama owner dari Atlas users |
+| `prj_is_active` | Boolean | Status project aktif/nonaktif |
 
 ### Task Parameters
 
 | Parameter | Tipe | Deskripsi |
 |-----------|------|-----------|
 | `tsk_id` | Integer | ID unik task (Primary Key) |
-| `tsk_code` | String | Kode task yang unique, contoh: "TSK-001", "BUG-123" |
+| `tsk_code` | String | **Auto-generated** format: `{prj_id}/{type_code}/{number}` |
 | `tsk_title` | String | Judul/ringkasan task |
-| `tsk_description` | Text | Deskripsi lengkap task, bisa berisi requirement detail |
-| `tsk_prj_id` | Integer | ID project yang memiliki task ini (Foreign Key, opsional - task bisa tidak terikat project) |
-| `tsk_ms_id` | Integer | ID master status task (Foreign Key ke master_status) - status saat ini: To Do, In Progress, Done, dll |
-| `tsk_mp_id` | Integer | ID master priority task (Foreign Key ke master_priority) - prioritas: Low, Medium, High, Critical |
-| `tsk_mtt_id` | Integer | ID master task type (Foreign Key ke master_task_type) - tipe: Task, Bug, Feature, Improvement, dll |
-| `tsk_assignee_u_id` | Integer | ID user yang ditugaskan mengerjakan task (Foreign Key ke users, opsional) |
-| `tsk_reporter_u_id` | Integer | ID user yang membuat/melaporkan task (Foreign Key ke users) |
-| `tsk_start_date` | Timestamp | Tanggal dan waktu mulai pengerjaan task (format: ISO 8601) |
-| `tsk_due_date` | Timestamp | Deadline task (format: ISO 8601) |
-| `tsk_duration` | Decimal | Estimasi waktu yang dibutuhkan untuk task (dalam jam, contoh: 40.00) |
-| `tsk_parent_tsk_id` | Integer | ID task parent jika ini adalah sub-task (Foreign Key ke task lain, untuk hierarki task) |
-
-### Comment Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `tc_id` | Integer | ID unik comment (Primary Key) |
-| `tc_tsk_id` | Integer | ID task yang dikomentari (Foreign Key ke task) |
-| `tc_u_id` | Integer | ID user yang menulis comment (Foreign Key ke users) |
-| `tc_comment` | Text | Isi komentar/diskusi |
-| `tc_parent_tc_id` | Integer | ID comment parent jika ini reply (Foreign Key ke comment lain, untuk threading/nested comments) |
-
-### Attachment Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `ta_id` | Integer | ID unik attachment (Primary Key) |
-| `ta_tsk_id` | Integer | ID task yang memiliki attachment (Foreign Key ke task) |
-| `ta_file_name` | String | Nama file original yang diupload |
-| `ta_file_path` | String | Path/lokasi penyimpanan file di server atau cloud storage |
-| `ta_file_size` | Integer | Ukuran file dalam bytes |
-| `ta_file_type` | String | Ekstensi file (pdf, jpg, png, docx, dll) |
+| `tsk_description` | Text | Deskripsi lengkap task |
+| `tsk_prj_id` | Integer | ID project (required) |
+| `tsk_ms_id` | Integer | ID master status (required) |
+| `tsk_mp_id` | Integer | ID master priority (required) |
+| `tsk_mtt_id` | Integer | ID master task type (required) |
+| `tsk_assignee_u_id` | Integer | ID user assigned (optional) |
+| `tsk_reporter_u_id` | Integer | ID user reporter (required) |
+| `tsk_start_date` | Timestamp | Tanggal mulai |
+| `tsk_due_date` | Timestamp | Deadline (**only assignee can set**) |
+| `tsk_duration` | Decimal | **Auto-calculated in hours** (read-only) |
+| `tsk_parent_tsk_id` | Integer | ID parent task untuk sub-task |
+| `tsk_project_name` | String | **Auto-joined** nama project |
+| `tsk_status_name` | String | **Auto-joined** nama status |
+| `tsk_priority_name` | String | **Auto-joined** nama priority |
+| `tsk_priority_color` | String | **Auto-joined** warna priority |
+| `tsk_type_name` | String | **Auto-joined** nama type |
+| `tsk_assignee_name` | String | **Auto-joined** nama assignee |
+| `tsk_reporter_name` | String | **Auto-joined** nama reporter |
 
 ### History Parameters
 
 | Parameter | Tipe | Deskripsi |
 |-----------|------|-----------|
-| `th_id` | Integer | ID unik history record (Primary Key) |
-| `th_tsk_id` | Integer | ID task yang mengalami perubahan (Foreign Key ke task) |
-| `th_field_name` | String | Nama field yang diubah (status, priority, assignee, due_date, dll) |
-| `th_old_value` | String | Nilai lama sebelum perubahan |
-| `th_new_value` | String | Nilai baru setelah perubahan |
-| `th_u_id` | Integer | ID user yang melakukan perubahan (Foreign Key ke users) |
+| `th_id` | Integer | ID unik history (Primary Key) |
+| `th_tsk_id` | Integer | ID task yang berubah |
+| `th_field_name` | String | Field yang diubah |
+| `th_old_value` | String | Nilai lama |
+| `th_new_value` | String | Nilai baru |
+| `th_u_id` | Integer | ID user yang mengubah |
+| `th_task_title` | String | **Auto-joined** judul task |
+| `th_user_name` | String | **Auto-joined** nama user |
+| `created_by` | String | User yang membuat record |
+| `created_at` | Timestamp | Waktu pembuatan |
 
-### Label Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `lbl_id` | Integer | ID unik label (Primary Key) |
-| `lbl_name` | String | Nama label yang unique (frontend, backend, urgent, documentation, dll) |
-| `lbl_color` | String | Kode warna hex untuk visualisasi (#3498db, #e74c3c, dll) |
-| `lbl_description` | String | Deskripsi kegunaan label |
-
-### Task Label Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `tl_id` | Integer | ID unik relasi task-label (Primary Key) |
-| `tl_tsk_id` | Integer | ID task yang diberi label (Foreign Key ke task) |
-| `tl_lbl_id` | Integer | ID label yang ditempelkan (Foreign Key ke label) |
-
-> **Note:** Kombinasi `tl_tsk_id` dan `tl_lbl_id` adalah unique - satu task tidak bisa memiliki label yang sama lebih dari sekali.
-
-### Watcher Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `tw_id` | Integer | ID unik relasi watcher (Primary Key) |
-| `tw_tsk_id` | Integer | ID task yang di-watch (Foreign Key ke task) |
-| `tw_u_id` | Integer | ID user yang menjadi watcher/pengamat (Foreign Key ke users) |
-
-> **Note:** Kombinasi `tw_tsk_id` dan `tw_u_id` adalah unique - satu user tidak bisa watch task yang sama lebih dari sekali. User yang menjadi watcher akan mendapat notifikasi setiap ada perubahan pada task.
-
-### Master Status Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `ms_id` | Integer | ID unik status (Primary Key) |
-| `ms_code` | String | Kode status machine-readable (TODO, IN_PROGRESS, IN_REVIEW, DONE, CANCELLED) |
-| `ms_name` | String | Nama status yang ditampilkan ("To Do", "In Progress", "In Review", "Done", "Cancelled") |
-| `ms_description` | Text | Penjelasan detail tentang status |
-| `ms_is_active` | Boolean | Penanda apakah status masih aktif digunakan |
-
-### Master Priority Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `mp_id` | Integer | ID unik priority (Primary Key) |
-| `mp_code` | String | Kode prioritas (LOW, MEDIUM, HIGH, CRITICAL) |
-| `mp_name` | String | Nama prioritas ditampilkan ("Low", "Medium", "High", "Critical") |
-| `mp_level` | Integer | Level prioritas dalam angka (1=terendah, 4=tertinggi) - berguna untuk sorting |
-| `mp_color` | String | Kode warna hex (#2ecc71 untuk low, #FF0000 untuk critical) |
-| `mp_is_active` | Boolean | Status aktif/nonaktif prioritas |
-
-### Master Task Type Parameters
-
-| Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
-| `mtt_id` | Integer | ID unik task type (Primary Key) |
-| `mtt_code` | String | Kode tipe task (TASK, BUG, FEATURE, IMPROVEMENT, RESEARCH) |
-| `mtt_name` | String | Nama tipe task ("Task", "Bug", "Feature", "Improvement", "Research") |
-| `mtt_description` | Text | Deskripsi dari tipe task |
-| `mtt_is_active` | Boolean | Status aktif/nonaktif tipe task |
+**Note:** History **tidak memiliki** `updated_by` dan `updated_at` (immutable log)
 
 ## Response Format
 
@@ -774,7 +639,9 @@ GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 }
 ```
 
-## Authentication
+## Authentication & Authorization
+
+### Authentication
 
 Semua endpoint memerlukan authentication header:
 
@@ -782,48 +649,88 @@ Semua endpoint memerlukan authentication header:
 Authorization: Bearer {token}
 ```
 
-Token didapat dari Atlas SSO. Setiap request akan divalidasi dengan Atlas dan mendapat informasi user (user_id, role_level, dll).
+Token didapat dari Atlas SSO. Setiap request akan divalidasi dan mendapat informasi user (user_id, username, role_level, dll).
 
-**Minimum Role Level**: Sebagian besar endpoint memerlukan role level minimal 10.
+### Authorization Rules
+
+**Minimum Role Level:** Role level minimal **10** untuk akses API.
+
+**Creator-Only Operations:**
+- ⚠️ **UPDATE**: Hanya creator (`created_by == current_user_id`) yang bisa update
+- ⚠️ **DELETE**: Hanya creator (`created_by == current_user_id`) yang bisa delete
+- Berlaku untuk: Projects, Tasks, Master Data
+
+**Special Task Rules:**
+- ⚠️ **tsk_due_date**: Hanya assignee (`tsk_assignee_u_id == current_user_id`) yang bisa set/update
+- ⚠️ **tsk_duration**: Read-only, auto-calculated (tidak bisa manual set)
+
+## Validation Rules
+
+### Task Validation
+
+1. **Task Code**: Auto-generated, format `{prj_id}/{type_code}/{number}` (e.g., `005/BUG/001`)
+2. **Due Date**: Must be >= start_date (error jika due_date lebih awal)
+3. **Duration**: Auto-calculated in **hours** from (due_date - start_date), read-only
+4. **Assignee-Only Due Date**: Only assignee can set/update `tsk_due_date`
+5. **Creator-Only Modification**: Only creator can update/delete task
+
+### Project Validation
+
+1. **Project Code**: Must be unique
+2. **Creator-Only Modification**: Only creator can update/delete project
+
+### History (Audit Log)
+
+1. **Immutable Log**: Cannot be updated or deleted via API
+2. **Auto-Created**: Automatically created on task updates
+3. **No Manual Creation**: No POST endpoint available
+4. **Tracked Fields**: title, description, status, priority, assignee, due_date, start_date
+
+### Label & Watcher
+
+1. **Unique Assignment**: Satu task tidak bisa memiliki label/watcher yang sama lebih dari sekali
+2. **Bulk Delete**: Support comma-separated IDs (e.g., `DELETE /tasks/1/labels/1,2,3`)
 
 ## Audit Fields
 
-Setiap tabel memiliki audit fields untuk tracking:
+Setiap tabel memiliki audit fields:
 
-- `created_by` - Username/ID yang membuat record
+- `created_by` - ID user yang membuat
 - `created_at` - Timestamp pembuatan
-- `updated_by` - Username/ID yang terakhir update
+- `updated_by` - ID user yang terakhir update
 - `updated_at` - Timestamp update terakhir
+
+**Exception:** Table `task_history` hanya punya `created_by` dan `created_at` (immutable log).
 
 ## Response Encryption
 
-Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true` di environment variable. Client perlu mendekripsi response dengan key dan IV yang sesuai.
+Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true`. Client perlu mendekripsi dengan key dan IV yang sesuai.
 
 ## Catatan Penting
 
-1. **Soft Delete**: Sistem menggunakan hard delete. Pertimbangkan implementasi soft delete untuk data penting.
+1. **Clean Architecture**: Menggunakan 3-layer architecture (Presentation → Service → Repository)
 
-2. **Cascade Delete**: Ketika task dihapus, semua data terkait (comments, attachments, history, labels, watchers) akan ikut terhapus.
+2. **Immutable Audit Trail**: History adalah log yang tidak bisa diubah/dihapus
 
-3. **Validation Rules**:
-   - Task code harus unique
-   - Project code harus unique
-   - Label name harus unique
-   - Due date tidak boleh lebih awal dari start date
-   - Satu user tidak bisa menjadi watcher task yang sama lebih dari sekali
-   - Satu task tidak bisa memiliki label yang sama lebih dari sekali
+3. **Auto-Generated Fields**:
+   - Task code auto-generated
+   - Task duration auto-calculated
+   - History auto-created on updates
 
-4. **File Upload** (Under Development):
-   - Fitur attachment sedang dalam pengembangan
-   - Semua endpoint attachment akan return "under development" message
-   - Future plan: File disimpan di folder `uploads/tasks/{tsk_id}/`
-   - Future plan: Batasan ukuran file (misal: max 10MB)
-   - Future plan: Support semua tipe file
+4. **Auto-Joins**: Semua foreign key auto-joined dengan data terkait (nama user, nama project, dll)
 
-5. **History Tracking**:
-   - Setiap perubahan pada task otomatis tercatat di `task_history`
-   - Field yang di-track: status, priority, assignee, due_date, dll
+5. **Cascade Delete**: Ketika task dihapus, semua data terkait (comments, history, labels, watchers) ikut terhapus
 
-6. **Performance**:
-   - Database sudah menggunakan indexing untuk kolom yang sering di-query
-   - Response data ter-enkripsi jika enabled untuk keamanan ekstra
+6. **Nested Resources**: Comments, history, labels, watchers hanya accessible via `/tasks/{tsk_id}/*`
+
+7. **Duration in Hours**: Task duration dihitung dalam satuan **jam (hours)**
+
+8. **File Upload** (Under Development): Fitur attachment sedang dalam pengembangan
+
+## Kontribusi
+
+Untuk kontribusi, silakan buat pull request atau hubungi maintainer.
+
+## License
+
+[Specify your license here]

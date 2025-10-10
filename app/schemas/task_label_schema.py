@@ -44,4 +44,7 @@ class TaskLabelInDB(TaskLabelBase):
 
 
 class TaskLabel(TaskLabelInDB):
-    pass
+    # Additional fields from joins
+    tl_task_title: Optional[str] = None
+    tl_label_name: Optional[str] = None
+    tl_label_color: Optional[str] = None

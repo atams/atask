@@ -6,6 +6,8 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.repositories.task_comment_repository import TaskCommentRepository
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.task_comment_schema import TaskCommentCreate, TaskCommentUpdate, TaskComment
 from atams.exceptions import NotFoundException, ForbiddenException
 
@@ -13,6 +15,27 @@ from atams.exceptions import NotFoundException, ForbiddenException
 class TaskCommentService:
     def __init__(self):
         self.repository = TaskCommentRepository()
+        self.task_repository = TaskRepository()
+        self.user_repository = UserRepository()
+
+    def _populate_comment_joins(self, db: Session, db_comment) -> dict:
+        """Populate task comment with joined data from related tables"""
+        comment_dict = TaskComment.model_validate(db_comment).model_dump()
+
+        # Get task title
+        if db_comment.tc_tsk_id:
+            task = self.task_repository.get(db, db_comment.tc_tsk_id)
+            if task:
+                comment_dict["tc_task_title"] = task.tsk_title
+
+        # Get user name and email
+        if db_comment.tc_u_id:
+            user = self.user_repository.get_user_by_id(db, db_comment.tc_u_id)
+            if user:
+                comment_dict["tc_user_name"] = user.get("u_full_name")
+                comment_dict["tc_user_email"] = user.get("u_email")
+
+        return comment_dict
 
     def get_task_comment(
         self,
@@ -29,7 +52,9 @@ class TaskCommentService:
         if not db_task_comment:
             raise NotFoundException(f"Task comment with ID {tc_id} not found")
 
-        return TaskComment.model_validate(db_task_comment)
+        # Populate joined data
+        comment_dict = self._populate_comment_joins(db, db_task_comment)
+        return TaskComment.model_validate(comment_dict)
 
     def get_task_comments(
         self,
@@ -43,7 +68,14 @@ class TaskCommentService:
             raise ForbiddenException("Insufficient permission to list task comments")
 
         db_task_comments = self.repository.get_multi(db, skip=skip, limit=limit)
-        return [TaskComment.model_validate(tc) for tc in db_task_comments]
+
+        # Populate joined data for each task comment
+        comments = []
+        for db_comment in db_task_comments:
+            comment_dict = self._populate_comment_joins(db, db_comment)
+            comments.append(TaskComment.model_validate(comment_dict))
+
+        return comments
 
     def create_task_comment(
         self,
@@ -61,7 +93,10 @@ class TaskCommentService:
         data["created_by"] = str(current_user_id)
 
         db_task_comment = self.repository.create(db, data)
-        return TaskComment.model_validate(db_task_comment)
+
+        # Populate joined data
+        comment_dict = self._populate_comment_joins(db, db_task_comment)
+        return TaskComment.model_validate(comment_dict)
 
     def update_task_comment(
         self,

@@ -5,12 +5,8 @@ from app.api.v1.endpoints import (
     master_task_type,
     project,
     task,
-    task_comment,
     task_attachment,
-    task_history,
     label,
-    task_label,
-    task_watcher,
     users
 )
 
@@ -47,19 +43,9 @@ api_router.include_router(
 
 # Task Related Endpoints
 api_router.include_router(
-    task_comment.router,
-    prefix="/comments",
-    tags=["Task Comments"]
-)
-api_router.include_router(
     task_attachment.router,
     prefix="/attachments",
     tags=["Task Attachments"]
-)
-api_router.include_router(
-    task_history.router,
-    prefix="/history",
-    tags=["Task History"]
 )
 
 # Label Endpoints
@@ -67,18 +53,6 @@ api_router.include_router(
     label.router,
     prefix="/labels",
     tags=["Labels"]
-)
-api_router.include_router(
-    task_label.router,
-    prefix="/task-labels",
-    tags=["Task Labels"]
-)
-
-# Watcher Endpoints
-api_router.include_router(
-    task_watcher.router,
-    prefix="/watchers",
-    tags=["Task Watchers"]
 )
 
 # User Endpoints

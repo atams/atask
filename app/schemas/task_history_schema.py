@@ -32,10 +32,8 @@ class TaskHistoryInDB(TaskHistoryBase):
     th_id: int
     created_by: str
     created_at: datetime
-    updated_by: Optional[str] = None
-    updated_at: Optional[datetime] = None
 
-    @field_validator('created_at', 'updated_at', mode='before')
+    @field_validator('created_at', mode='before')
     @classmethod
     def fix_datetime_timezone(cls, v):
         if v == '' or v is None:
@@ -50,4 +48,6 @@ class TaskHistoryInDB(TaskHistoryBase):
 
 
 class TaskHistory(TaskHistoryInDB):
-    pass
+    # Additional fields from joins
+    th_task_title: Optional[str] = None
+    th_user_name: Optional[str] = None

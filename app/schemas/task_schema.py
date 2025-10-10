@@ -19,7 +19,7 @@ class TaskBase(BaseModel):
     tsk_reporter_u_id: int
     tsk_start_date: Optional[datetime] = None
     tsk_due_date: Optional[datetime] = None
-    tsk_duration: Optional[Decimal] = None
+    tsk_duration: Optional[Decimal] = None  # Duration in hours (auto-calculated, read-only)
     tsk_parent_tsk_id: Optional[int] = None
 
 
@@ -34,8 +34,8 @@ class TaskCreate(BaseModel):
     tsk_assignee_u_id: Optional[int] = None
     tsk_reporter_u_id: int
     tsk_start_date: Optional[datetime] = None
-    tsk_due_date: Optional[datetime] = None
-    tsk_duration: Optional[Decimal] = None
+    # tsk_due_date removed - only assignee can set this
+    # tsk_duration removed - auto-calculated from dates
     tsk_parent_tsk_id: Optional[int] = None
 
 
@@ -50,8 +50,8 @@ class TaskUpdate(BaseModel):
     tsk_assignee_u_id: Optional[int] = None
     tsk_reporter_u_id: Optional[int] = None
     tsk_start_date: Optional[datetime] = None
-    tsk_due_date: Optional[datetime] = None
-    tsk_duration: Optional[Decimal] = None
+    tsk_due_date: Optional[datetime] = None  # Only assignee can update this field
+    # tsk_duration removed - auto-calculated and read-only
     tsk_parent_tsk_id: Optional[int] = None
 
 
@@ -79,4 +79,11 @@ class TaskInDB(TaskBase):
 
 
 class Task(TaskInDB):
-    pass
+    # Additional fields from joins
+    tsk_project_name: Optional[str] = None
+    tsk_status_name: Optional[str] = None
+    tsk_priority_name: Optional[str] = None
+    tsk_priority_color: Optional[str] = None
+    tsk_type_name: Optional[str] = None
+    tsk_assignee_name: Optional[str] = None
+    tsk_reporter_name: Optional[str] = None

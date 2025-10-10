@@ -2,6 +2,7 @@
 Project Endpoints
 Complete CRUD operations with Atlas SSO authentication
 """
+from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -148,7 +149,8 @@ async def delete_project(
     project_service.delete_project(
         db,
         prj_id,
-        current_user_role_level=current_user["role_level"]
+        current_user_role_level=current_user["role_level"],
+        current_user_id=current_user["user_id"]
     )
 
     return None
@@ -156,25 +158,36 @@ async def delete_project(
 
 # ==================== PROJECT STATISTICS ENDPOINTS ====================
 
+class StatusCounts(BaseModel):
+    TODO: int
+    IN_PROGRESS: int
+    IN_REVIEW: int
+    DONE: int
+    CANCELLED: int
+
+class PriorityCounts(BaseModel):
+    LOW: int
+    MEDIUM: int
+    HIGH: int
+    CRITICAL: int
+
+class TypeCounts(BaseModel):
+    TASK: int
+    BUG: int
+    FEATURE: int
+    IMPROVEMENT: int
+    RESEARCH: int
+
 class ProjectStatistics(BaseModel):
     prj_id: int
     prj_name: str
     total_tasks: int
-    todo_count: int
-    in_progress_count: int
-    in_review_count: int
-    done_count: int
-    cancelled_count: int
-    low_priority_count: int
-    medium_priority_count: int
-    high_priority_count: int
-    critical_priority_count: int
-    task_type_count: int
-    bug_type_count: int
-    feature_type_count: int
-    improvement_type_count: int
-    research_type_count: int
+    by_status: StatusCounts
+    by_priority: PriorityCounts
+    by_type: TypeCounts
     overdue_tasks: int
+    completion_rate: float
+    average_completion_time: Optional[float] = None
 
 
 @router.get(

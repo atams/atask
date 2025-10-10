@@ -44,4 +44,7 @@ class TaskWatcherInDB(TaskWatcherBase):
 
 
 class TaskWatcher(TaskWatcherInDB):
-    pass
+    # Additional fields from joins
+    tw_task_title: Optional[str] = None
+    tw_user_name: Optional[str] = None
+    tw_user_email: Optional[str] = None

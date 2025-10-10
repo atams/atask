@@ -36,11 +36,11 @@ class ProjectRepository(BaseRepository[Project]):
                 SUM(CASE WHEN mtt.mtt_code = 'IMPROVEMENT' THEN 1 ELSE 0 END) as improvement_type_count,
                 SUM(CASE WHEN mtt.mtt_code = 'RESEARCH' THEN 1 ELSE 0 END) as research_type_count,
                 SUM(CASE WHEN t.tsk_due_date < NOW() AND ms.ms_code NOT IN ('DONE', 'CANCELLED') THEN 1 ELSE 0 END) as overdue_tasks
-            FROM project p
-            LEFT JOIN task t ON p.prj_id = t.tsk_prj_id
-            LEFT JOIN master_status ms ON t.tsk_ms_id = ms.ms_id
-            LEFT JOIN master_priority mp ON t.tsk_mp_id = mp.mp_id
-            LEFT JOIN master_task_type mtt ON t.tsk_mtt_id = mtt.mtt_id
+            FROM atask.project p
+            LEFT JOIN atask.task t ON p.prj_id = t.tsk_prj_id
+            LEFT JOIN atask.master_status ms ON t.tsk_ms_id = ms.ms_id
+            LEFT JOIN atask.master_priority mp ON t.tsk_mp_id = mp.mp_id
+            LEFT JOIN atask.master_task_type mtt ON t.tsk_mtt_id = mtt.mtt_id
             WHERE p.prj_id = :prj_id
             GROUP BY p.prj_id, p.prj_name
         """

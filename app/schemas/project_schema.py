@@ -54,4 +54,4 @@ class ProjectInDB(ProjectBase):
 
 
 class Project(ProjectInDB):
-    pass
+    prj_owner_name: Optional[str] = None

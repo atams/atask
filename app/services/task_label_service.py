@@ -6,6 +6,8 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.repositories.task_label_repository import TaskLabelRepository
+from app.repositories.task_repository import TaskRepository
+from app.repositories.label_repository import LabelRepository
 from app.schemas.task_label_schema import TaskLabelCreate, TaskLabelUpdate, TaskLabel
 from atams.exceptions import NotFoundException, ForbiddenException
 
@@ -13,6 +15,27 @@ from atams.exceptions import NotFoundException, ForbiddenException
 class TaskLabelService:
     def __init__(self):
         self.repository = TaskLabelRepository()
+        self.task_repository = TaskRepository()
+        self.label_repository = LabelRepository()
+
+    def _populate_label_joins(self, db: Session, db_task_label) -> dict:
+        """Populate task label with joined data from related tables"""
+        label_dict = TaskLabel.model_validate(db_task_label).model_dump()
+
+        # Get task title
+        if db_task_label.tl_tsk_id:
+            task = self.task_repository.get(db, db_task_label.tl_tsk_id)
+            if task:
+                label_dict["tl_task_title"] = task.tsk_title
+
+        # Get label name and color
+        if db_task_label.tl_lbl_id:
+            label = self.label_repository.get(db, db_task_label.tl_lbl_id)
+            if label:
+                label_dict["tl_label_name"] = label.lbl_name
+                label_dict["tl_label_color"] = label.lbl_color
+
+        return label_dict
 
     def get_task_label(
         self,

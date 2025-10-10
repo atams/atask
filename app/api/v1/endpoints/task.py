@@ -198,7 +198,8 @@ async def delete_task(
     task_service.delete_task(
         db,
         tsk_id,
-        current_user_role_level=current_user["role_level"]
+        current_user_role_level=current_user["role_level"],
+        current_user_id=current_user["user_id"]
     )
 
     return None
@@ -256,7 +257,7 @@ async def get_task_comments(
 ):
     """Get all comments for task"""
     # Use repository filter method to get comments by task ID
-    comments = task_comment_service.repository.filter(
+    db_comments = task_comment_service.repository.filter(
         db,
         filters={"tc_tsk_id": tsk_id},
         skip=skip,
@@ -265,10 +266,16 @@ async def get_task_comments(
     )
     total = task_comment_service.repository.count_filtered(db, {"tc_tsk_id": tsk_id})
 
+    # Populate joined data for each comment
+    comments = []
+    for db_comment in db_comments:
+        comment_dict = task_comment_service._populate_comment_joins(db, db_comment)
+        comments.append(TaskComment.model_validate(comment_dict))
+
     response = PaginationResponse(
         success=True,
         message="Comments retrieved successfully",
-        data=[TaskComment.model_validate(c) for c in comments],
+        data=comments,
         total=total,
         page=skip // limit + 1,
         size=limit,
@@ -352,7 +359,7 @@ async def get_task_history(
     if field_name:
         filters["th_field_name"] = field_name
 
-    history = task_history_service.repository.filter(
+    db_histories = task_history_service.repository.filter(
         db,
         filters=filters,
         skip=skip,
@@ -361,10 +368,16 @@ async def get_task_history(
     )
     total = task_history_service.repository.count_filtered(db, filters)
 
+    # Populate joined data for each history
+    histories = []
+    for db_history in db_histories:
+        history_dict = task_history_service._populate_history_joins(db, db_history)
+        histories.append(TaskHistory.model_validate(history_dict))
+
     response = PaginationResponse(
         success=True,
         message="Task history retrieved successfully",
-        data=[TaskHistory.model_validate(h) for h in history],
+        data=histories,
         total=total,
         page=skip // limit + 1,
         size=limit,
@@ -424,14 +437,20 @@ async def get_task_labels(
     current_user: dict = Depends(require_auth)
 ):
     """Get all labels for task"""
-    labels = task_label_service.repository.filter(
+    db_labels = task_label_service.repository.filter(
         db,
         filters={"tl_tsk_id": tsk_id},
         order_by="-created_at"
     )
 
+    # Populate joined data for each label
+    labels = []
+    for db_label in db_labels:
+        label_dict = task_label_service._populate_label_joins(db, db_label)
+        labels.append(TaskLabel.model_validate(label_dict))
+
     response_data = {
-        "labels": [TaskLabel.model_validate(lbl) for lbl in labels]
+        "labels": labels
     }
 
     response = DataResponse(
@@ -444,28 +463,33 @@ async def get_task_labels(
 
 
 @router.delete(
-    "/{tsk_id}/labels/{lbl_id}",
+    "/{tsk_id}/labels/{lbl_ids}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_min_role_level(10))]
 )
-async def remove_label_from_task(
+async def remove_labels_from_task(
     tsk_id: int,
-    lbl_id: int,
+    lbl_ids: str,
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
-    """Remove label from task"""
-    # Find the task_label record
-    task_label = task_label_service.repository.first(
-        db,
-        filters={"tl_tsk_id": tsk_id, "tl_lbl_id": lbl_id}
-    )
+    """Remove one or multiple labels from task. lbl_ids can be comma-separated (e.g., '1' or '1,2,3')"""
+    # Parse comma-separated IDs
+    label_ids = [int(id.strip()) for id in lbl_ids.split(",")]
 
-    if task_label:
-        task_label_service.delete_task_label(
+    # Delete each label
+    for lbl_id in label_ids:
+        # Find the task_label record
+        task_label = task_label_service.repository.first(
             db,
-            task_label.tl_id,
-            current_user_role_level=current_user["role_level"]
+            filters={"tl_tsk_id": tsk_id, "tl_lbl_id": lbl_id}
+        )
+
+        if task_label:
+            task_label_service.delete_task_label(
+                db,
+                task_label.tl_id,
+                current_user_role_level=current_user["role_level"]
         )
 
     return None
@@ -521,14 +545,20 @@ async def get_task_watchers(
     current_user: dict = Depends(require_auth)
 ):
     """Get all watchers for task"""
-    watchers = task_watcher_service.repository.filter(
+    db_watchers = task_watcher_service.repository.filter(
         db,
         filters={"tw_tsk_id": tsk_id},
         order_by="-created_at"
     )
 
+    # Populate joined data for each watcher
+    watchers = []
+    for db_watcher in db_watchers:
+        watcher_dict = task_watcher_service._populate_watcher_joins(db, db_watcher)
+        watchers.append(TaskWatcher.model_validate(watcher_dict))
+
     response_data = {
-        "watchers": [TaskWatcher.model_validate(w) for w in watchers]
+        "watchers": watchers
     }
 
     response = DataResponse(
@@ -541,29 +571,34 @@ async def get_task_watchers(
 
 
 @router.delete(
-    "/{tsk_id}/watchers/{u_id}",
+    "/{tsk_id}/watchers/{u_ids}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_min_role_level(10))]
 )
-async def remove_watcher_from_task(
+async def remove_watchers_from_task(
     tsk_id: int,
-    u_id: int,
+    u_ids: str,
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
-    """Remove watcher from task"""
-    # Find the task_watcher record
-    task_watcher = task_watcher_service.repository.first(
-        db,
-        filters={"tw_tsk_id": tsk_id, "tw_u_id": u_id}
-    )
+    """Remove one or multiple watchers from task. u_ids can be comma-separated (e.g., '2' or '2,3,4')"""
+    # Parse comma-separated IDs
+    user_ids = [int(id.strip()) for id in u_ids.split(",")]
 
-    if task_watcher:
-        task_watcher_service.delete_task_watcher(
+    # Delete each watcher
+    for u_id in user_ids:
+        # Find the task_watcher record
+        task_watcher = task_watcher_service.repository.first(
             db,
-            task_watcher.tw_id,
-            current_user_role_level=current_user["role_level"]
+            filters={"tw_tsk_id": tsk_id, "tw_u_id": u_id}
         )
+
+        if task_watcher:
+            task_watcher_service.delete_task_watcher(
+                db,
+                task_watcher.tw_id,
+                current_user_role_level=current_user["role_level"]
+            )
 
     return None
 

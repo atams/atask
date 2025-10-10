@@ -6,6 +6,8 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from app.repositories.task_watcher_repository import TaskWatcherRepository
+from app.repositories.task_repository import TaskRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.task_watcher_schema import TaskWatcherCreate, TaskWatcherUpdate, TaskWatcher
 from atams.exceptions import NotFoundException, ForbiddenException, BadRequestException
 
@@ -13,6 +15,27 @@ from atams.exceptions import NotFoundException, ForbiddenException, BadRequestEx
 class TaskWatcherService:
     def __init__(self):
         self.repository = TaskWatcherRepository()
+        self.task_repository = TaskRepository()
+        self.user_repository = UserRepository()
+
+    def _populate_watcher_joins(self, db: Session, db_watcher) -> dict:
+        """Populate task watcher with joined data from related tables"""
+        watcher_dict = TaskWatcher.model_validate(db_watcher).model_dump()
+
+        # Get task title
+        if db_watcher.tw_tsk_id:
+            task = self.task_repository.get(db, db_watcher.tw_tsk_id)
+            if task:
+                watcher_dict["tw_task_title"] = task.tsk_title
+
+        # Get user name and email
+        if db_watcher.tw_u_id:
+            user = self.user_repository.get_user_by_id(db, db_watcher.tw_u_id)
+            if user:
+                watcher_dict["tw_user_name"] = user.get("u_full_name")
+                watcher_dict["tw_user_email"] = user.get("u_email")
+
+        return watcher_dict
 
     def get_task_watcher(
         self,

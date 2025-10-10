@@ -19,5 +19,3 @@ class TaskHistory(Base):
     th_u_id = Column(BigInteger, nullable=False)
     created_by = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_by = Column(String(100), nullable=True)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
