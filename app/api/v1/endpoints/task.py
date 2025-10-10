@@ -17,7 +17,7 @@ from app.services.task_label_service import TaskLabelService
 from app.services.task_watcher_service import TaskWatcherService
 from app.schemas.task_schema import Task, TaskCreate, TaskUpdate
 from app.schemas.task_comment_schema import TaskComment, TaskCommentCreate
-from app.schemas.task_attachment_schema import TaskAttachment, TaskAttachmentCreate
+from app.schemas.task_attachment_schema import TaskAttachment
 from app.schemas.task_history_schema import TaskHistory
 from app.schemas.task_label_schema import TaskLabel, TaskLabelCreate
 from app.schemas.task_watcher_schema import TaskWatcher, TaskWatcherCreate
@@ -286,7 +286,6 @@ async def get_task_comments(
 
 
 # ==================== TASK ATTACHMENTS ENDPOINTS ====================
-# TODO: Attachment functionality is under development
 
 @router.post(
     "/{tsk_id}/attachments",
@@ -296,19 +295,40 @@ async def get_task_comments(
 )
 async def upload_task_attachment(
     tsk_id: int,
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="File to upload"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
-    """Upload attachment to task"""
-    # TODO: Implement file upload handling
-    # TODO: Add file validation (size, type)
-    # TODO: Store file to local/cloud storage
-    # TODO: Create attachment database record
+    """
+    Upload attachment to specific task (Cloudinary integration)
+
+    **Required role level:** 10 (User)
+
+    **File Validation:**
+    - Allowed types: PDF documents (.pdf) and Images (.png, .jpg, .jpeg)
+    - Maximum size: 5MB for images, 10MB for PDF documents
+    - Content-Type validation is enforced
+
+    **Example:**
+    ```
+    POST /api/v1/tasks/123/attachments
+    Content-Type: multipart/form-data
+
+    file: [binary file]
+    ```
+    """
+    attachment = await task_attachment_service.upload_attachment(
+        db,
+        file=file,
+        task_id=tsk_id,
+        current_user_role_level=current_user["role_level"],
+        current_user_id=current_user["user_id"]
+    )
+
     return DataResponse(
-        success=False,
-        message="Attachment feature is currently under development",
-        data=None
+        success=True,
+        message="Attachment uploaded successfully",
+        data=attachment
     )
 
 
@@ -328,13 +348,28 @@ async def get_task_attachments(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
-    """Get all attachments for task"""
-    # TODO: Implement attachment retrieval for specific task
-    return DataResponse(
-        success=False,
-        message="Attachment feature is currently under development",
-        data=None
+    """Get all attachments for specific task"""
+    attachments = task_attachment_service.get_attachments_by_task_id(
+        db,
+        task_id=tsk_id,
+        current_user_role_level=current_user["role_level"]
     )
+
+    # Calculate total size
+    total_size = sum(att.ta_file_size or 0 for att in attachments)
+
+    response_data = {
+        "attachments": attachments,
+        "total_size": total_size
+    }
+
+    response = DataResponse(
+        success=True,
+        message="Task attachments retrieved successfully",
+        data=response_data
+    )
+
+    return encrypt_response_data(response, settings)
 
 
 # ==================== TASK HISTORY ENDPOINTS ====================

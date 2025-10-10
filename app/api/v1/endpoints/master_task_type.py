@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.master_task_type_service import MasterTaskTypeService
-from app.schemas.master_task_type_schema import MasterTaskType, MasterTaskTypeCreate, MasterTaskTypeUpdate
-from app.schemas.common import DataResponse, PaginationResponse
+from app.schemas.master_task_type_schema import MasterTaskType
+from app.schemas.common import PaginationResponse
 from app.api.deps import require_auth, require_min_role_level
 from atams.encryption import encrypt_response_data
 from app.core.config import settings

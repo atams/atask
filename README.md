@@ -726,11 +726,3 @@ Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true`. Client p
 7. **Duration in Hours**: Task duration dihitung dalam satuan **jam (hours)**
 
 8. **File Upload** (Under Development): Fitur attachment sedang dalam pengembangan
-
-## Kontribusi
-
-Untuk kontribusi, silakan buat pull request atau hubungi maintainer.
-
-## License
-
-[Specify your license here]

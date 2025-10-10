@@ -14,16 +14,23 @@ class TaskAttachmentBase(BaseModel):
     ta_file_type: Optional[str] = None
 
 
-class TaskAttachmentCreate(TaskAttachmentBase):
-    pass
+class TaskAttachmentCreate(BaseModel):
+    """
+    Schema for creating attachment - used internally after file upload
+    File upload is handled separately via multipart/form-data
+
+    Note: cloudinary_public_id is not stored in DB, it's extracted from ta_file_path when needed
+    """
+    ta_tsk_id: int
+    ta_file_name: str
+    ta_file_path: str  # Cloudinary secure_url
+    ta_file_size: Optional[int] = None
+    ta_file_type: Optional[str] = None
 
 
 class TaskAttachmentUpdate(BaseModel):
-    ta_tsk_id: Optional[int] = None
     ta_file_name: Optional[str] = None
-    ta_file_path: Optional[str] = None
-    ta_file_size: Optional[int] = None
-    ta_file_type: Optional[str] = None
+    # Note: Updating file path requires re-uploading the file
 
 
 class TaskAttachmentInDB(TaskAttachmentBase):

@@ -1,4 +1,5 @@
 from atams import AtamsBaseSettings
+from typing import Optional
 
 
 class Settings(AtamsBaseSettings):
@@ -18,6 +19,12 @@ class Settings(AtamsBaseSettings):
     """
     APP_NAME: str = "atask"
     APP_VERSION: str = "1.0.0"
+
+    # Cloudinary Settings
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+    CLOUDINARY_FOLDER: str = "atask"  # Default folder in Cloudinary
 
 
 settings = Settings()

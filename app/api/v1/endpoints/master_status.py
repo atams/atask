@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.master_status_service import MasterStatusService
-from app.schemas.master_status_schema import MasterStatus, MasterStatusCreate, MasterStatusUpdate
-from app.schemas.common import DataResponse, PaginationResponse
+from app.schemas.master_status_schema import MasterStatus
+from app.schemas.common import PaginationResponse
 from app.api.deps import require_auth, require_min_role_level
 from atams.encryption import encrypt_response_data
 from app.core.config import settings

@@ -9,7 +9,7 @@ from app.repositories.task_watcher_repository import TaskWatcherRepository
 from app.repositories.task_repository import TaskRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task_watcher_schema import TaskWatcherCreate, TaskWatcherUpdate, TaskWatcher
-from atams.exceptions import NotFoundException, ForbiddenException, BadRequestException
+from atams.exceptions import NotFoundException, ForbiddenException
 
 
 class TaskWatcherService:
