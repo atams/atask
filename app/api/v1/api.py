@@ -7,7 +7,8 @@ from app.api.v1.endpoints import (
     task,
     task_attachment,
     label,
-    users
+    users,
+    notification
 )
 
 api_router = APIRouter()
@@ -60,4 +61,11 @@ api_router.include_router(
     users.router,
     prefix="/users",
     tags=["Users"]
+)
+
+# Notification Endpoints
+api_router.include_router(
+    notification.router,
+    prefix="/notifications",
+    tags=["Notifications"]
 )

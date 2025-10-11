@@ -1,0 +1,46 @@
+name: Daily Task Reminder
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every day (9:00 AM WIB / UTC+7)
+    # Adjust the cron schedule based on your timezone
+    # Format: minute hour day month day-of-week
+    - cron: '0 2 * * *'
+
+  # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Daily Task Reminders
+        run: |
+          response=$(curl -X POST "${{ secrets.APP_URL }}/api/v1/notifications/send-daily-reminders" \
+            -H "X-Api-Key: ${{ secrets.CRON_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_STATUS:%{http_code}" \
+            -s)
+
+          http_status=$(echo "$response" | grep "HTTP_STATUS" | cut -d':' -f2)
+          response_body=$(echo "$response" | sed '/HTTP_STATUS/d')
+
+          echo "Response: $response_body"
+          echo "HTTP Status: $http_status"
+
+          if [ "$http_status" -ne 200 ]; then
+            echo "❌ Failed to send daily reminders. HTTP Status: $http_status"
+            exit 1
+          fi
+
+          echo "✅ Daily reminders sent successfully!"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "⚠️ Daily reminder job failed!"
+          echo "Please check the logs and verify:"
+          echo "1. APP_URL is correctly set in GitHub Secrets"
+          echo "2. CRON_API_KEY matches the one in your .env"
+          echo "3. The endpoint is accessible"

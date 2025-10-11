@@ -16,6 +16,7 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
   - [Nested Resources](#nested-resources)
   - [Labels](#labels)
   - [Users](#users)
+  - [Notifications](#notifications)
 - [Penjelasan Parameter Unik](#penjelasan-parameter-unik)
 - [Response Format](#response-format)
 - [Authentication & Authorization](#authentication--authorization)
@@ -28,7 +29,8 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
 - **Auto-Generated Task Code**: Task code otomatis dihasilkan berdasarkan project dan tipe task
 - **Task Duration Auto-Calculate**: Durasi otomatis dihitung dalam jam dari start_date sampai due_date
 - **Komentar & Diskusi**: Sistem komentar dengan threading (reply to comment)
-- **File Attachment**: Upload dan download file untuk setiap task ⚠️ *Under Development*
+- **File Attachment**: Upload dan download file untuk setiap task menggunakan Cloudinary
+- **Email Notification**: Automated daily task reminder via email untuk assignee (scheduled dengan GitHub Actions)
 - **Immutable Audit Trail**: Otomatis tracking perubahan task di history (log-only, tidak bisa diubah/dihapus)
 - **Labeling System**: Tag/label fleksibel untuk kategorisasi task dengan bulk operations
 - **Task Watcher**: Subscribe untuk mendapat notifikasi perubahan task dengan bulk operations
@@ -48,6 +50,10 @@ Atask adalah aplikasi manajemen task/tugas yang dibangun dengan FastAPI dan teri
 - **Authentication**: Atlas SSO (ATAMS)
 - **Validation**: Pydantic
 - **Server**: Uvicorn
+- **File Storage**: Cloudinary
+- **Email**: SMTP (Gmail, SendGrid, etc.)
+- **Template Engine**: Jinja2
+- **Scheduling**: GitHub Actions (Serverless Cron)
 
 ## Instalasi
 
@@ -95,6 +101,25 @@ ATLAS_SSO_URL=https://atlas.yourdomain.com/api
 ATLAS_APP_CODE=atask
 ATLAS_ENCRYPTION_KEY=your-32-char-encryption-key
 ATLAS_ENCRYPTION_IV=your-16-char-iv
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+CLOUDINARY_FOLDER=atask
+
+# Email Configuration
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_app_password
+MAIL_FROM=noreply@yourdomain.com
+MAIL_FROM_NAME=Atask Notification
+MAIL_PORT=587
+MAIL_SERVER=smtp.gmail.com
+MAIL_USE_TLS=True
+MAIL_USE_SSL=False
+
+# Cron API Key (generate: openssl rand -hex 32)
+CRON_API_KEY=your_secure_random_key_here
 
 # Response Encryption (Optional)
 ENCRYPTION_ENABLED=true
@@ -481,14 +506,52 @@ DELETE /api/v1/tasks/{tsk_id}/watchers/{u_ids}
 
 #### Task Attachments
 
-> **⚠️ UNDER DEVELOPMENT**: Semua endpoint akan return `"Attachment feature is currently under development"`
+**Upload File Attachment**
+```http
+POST /api/v1/attachments?task_id={tsk_id}
+Content-Type: multipart/form-data
+```
+**Request:**
+- Form field `file`: File to upload
+- Query param `task_id`: Task ID
 
+**Validation:**
+- Allowed types: PDF (.pdf), Images (.png, .jpg, .jpeg)
+- Max size: 5MB (images), 10MB (PDF)
+- Files uploaded to Cloudinary
+
+**Get All Attachments**
 ```http
-POST /api/v1/tasks/{tsk_id}/attachments
+GET /api/v1/attachments?skip=0&limit=100
 ```
+
+**Get Attachment by ID**
 ```http
-GET /api/v1/tasks/{tsk_id}/attachments
+GET /api/v1/attachments/{ta_id}
 ```
+
+**Update Attachment Metadata**
+```http
+PUT /api/v1/attachments/{ta_id}
+```
+**Request Body:**
+```json
+{
+  "ta_file_name": "new_filename.pdf"
+}
+```
+
+**Delete Attachment**
+```http
+DELETE /api/v1/attachments/{ta_id}
+```
+Menghapus dari database dan Cloudinary.
+
+**Download Attachment**
+```http
+GET /api/v1/attachments/{ta_id}/download
+```
+Forces download dengan proper Content-Disposition header.
 
 ### Labels
 
@@ -546,6 +609,81 @@ GET /api/v1/users/{u_id}/dashboard
 ```http
 GET /api/v1/users/{u_id}/watched-tasks?skip=0&limit=100&status_id=2
 ```
+
+### Notifications
+
+Email notification system untuk mengingatkan assignee tentang task yang mulai hari ini.
+
+#### Send Daily Reminders (Scheduled Endpoint)
+```http
+POST /api/v1/notifications/send-daily-reminders
+Headers:
+  X-Api-Key: {CRON_API_KEY}
+```
+
+**Security:** Requires `CRON_API_KEY` in header
+
+**Triggered by:** GitHub Actions setiap jam 9 pagi
+
+**Logic:**
+- Cari tasks dimana `tsk_start_date = today`
+- Filter tasks yang ada assignee (`tsk_assignee_u_id NOT NULL`)
+- Kirim email HTML ke assignee
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Daily reminders processed: 10 sent, 0 failed",
+  "data": {
+    "total_tasks": 10,
+    "emails_sent": 10,
+    "emails_failed": 0,
+    "success_rate": 100.0,
+    "failed_tasks": []
+  }
+}
+```
+
+#### Notification Health Check
+```http
+GET /api/v1/notifications/health
+```
+
+**No authentication required** - untuk monitoring
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "email_configured": true,
+  "cron_api_key_configured": true
+}
+```
+
+#### Email Template Info
+
+Email notification berisi:
+- Greeting dengan nama assignee
+- Task code & title
+- Project name & code
+- Status, Priority, Type
+- Reporter name
+- Start date
+- Task description (jika ada)
+- Beautiful responsive HTML design
+
+#### GitHub Actions Setup
+
+1. **Add GitHub Secrets:**
+   - `APP_URL`: URL aplikasi Anda (e.g., `https://your-app.vercel.app`)
+   - `CRON_API_KEY`: Same value dengan env variable `CRON_API_KEY`
+
+2. **Workflow File:** `.github/workflows/daily-task-reminder.yml`
+
+3. **Schedule:** Runs at `02:00 UTC` daily (09:00 WIB)
+
+4. **Manual Trigger:** Bisa di-trigger manual dari GitHub Actions tab
 
 ## Penjelasan Parameter Unik
 
@@ -725,4 +863,12 @@ Response data bisa di-enkripsi otomatis jika `ENCRYPTION_ENABLED=true`. Client p
 
 7. **Duration in Hours**: Task duration dihitung dalam satuan **jam (hours)**
 
-8. **File Upload** (Under Development): Fitur attachment sedang dalam pengembangan
+8. **File Upload**: Attachment menggunakan Cloudinary untuk cloud storage
+
+9. **Email Notifications**:
+   - Automated daily reminders via GitHub Actions
+   - Triggered setiap jam 9 pagi (WIB)
+   - Beautiful HTML email template
+   - Supports Gmail, SendGrid, Mailgun, dan SMTP lainnya
+
+10. **Serverless Deployment**: Kompatibel dengan Vercel serverless deployment

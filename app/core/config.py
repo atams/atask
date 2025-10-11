@@ -26,5 +26,18 @@ class Settings(AtamsBaseSettings):
     CLOUDINARY_API_SECRET: Optional[str] = None
     CLOUDINARY_FOLDER: str = "atask"  # Default folder in Cloudinary
 
+    # Email Configuration
+    MAIL_USERNAME: Optional[str] = None
+    MAIL_PASSWORD: Optional[str] = None
+    MAIL_FROM: Optional[str] = None
+    MAIL_FROM_NAME: Optional[str] = "Atask Notification"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: Optional[str] = None
+    MAIL_USE_TLS: bool = True
+    MAIL_USE_SSL: bool = False
+
+    # Cron API Key for securing scheduled endpoints
+    CRON_API_KEY: Optional[str] = None
+
 
 settings = Settings()
