@@ -39,5 +39,8 @@ class Settings(AtamsBaseSettings):
     # Cron API Key for securing scheduled endpoints
     CRON_API_KEY: Optional[str] = None
 
+    # Frontend URL for tracking links
+    APP_URL: Optional[str] = None
+
 
 settings = Settings()

@@ -24,6 +24,28 @@ services:
       ATLAS_ENCRYPTION_KEY: ${ATLAS_ENCRYPTION_KEY}
       ATLAS_ENCRYPTION_IV: ${ATLAS_ENCRYPTION_IV}
 
+      # Cloudinary Configuration
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_FOLDER: ${CLOUDINARY_FOLDER:-atask}
+
+      # Email Configuration
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Atask Notification}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SERVER: ${MAIL_SERVER}
+      MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
+      MAIL_USE_SSL: ${MAIL_USE_SSL:-false}
+
+      # Frontend URL for tracking links
+      APP_URL: ${APP_URL}
+
+      # Cron API Key for securing scheduled endpoints
+      CRON_API_KEY: ${CRON_API_KEY}
+
       # Response Encryption (Optional)
       ENCRYPTION_ENABLED: ${ENCRYPTION_ENABLED:-false}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
@@ -42,21 +64,10 @@ services:
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
 
-    volumes:
-      # Mount logs directory if LOG_TO_FILE is enabled
-      - ./logs:/app/logs
-      # Mount uploads directory for future attachment feature
-      - ./uploads:/app/uploads
     restart: unless-stopped
-    networks:
-      - atask_network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-
-networks:
-  atask_network:
-    driver: bridge

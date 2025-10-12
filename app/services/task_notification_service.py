@@ -5,6 +5,7 @@ Business logic for sending task notifications
 from typing import Dict, List
 from datetime import date
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.services.email_service import EmailService
 from atams.exceptions import BadRequestException
@@ -69,7 +70,7 @@ class TaskNotificationService:
             ORDER BY t.tsk_id
         """
         today = date.today()
-        result = db.execute(query, {"today": today})
+        result = db.execute(text(query), {"today": today})
         return [dict(row._mapping) for row in result]
 
     def send_daily_reminders(self, db: Session) -> NotificationSummary:
