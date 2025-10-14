@@ -296,6 +296,8 @@ class TaskService:
 
     def bulk_update_status(self, db: Session, task_ids: List[int], ms_id: int, current_user_role_level: int, current_user_id: int):
         """Bulk update task status"""
+        from datetime import datetime
+
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission")
 
@@ -309,8 +311,34 @@ class TaskService:
         # Update status for all tasks
         updated_tasks = []
         for task in tasks:
+            old_status_id = task.tsk_ms_id
+
+            # Update status
             task.tsk_ms_id = ms_id
             task.updated_by = str(current_user_id)
+            task.updated_at = datetime.now()
+
+            # Logic untuk ms_id = 4 (DONE status)
+            if ms_id == 4:
+                # Set tsk_due_date ke now() jika belum ada
+                if task.tsk_due_date is None:
+                    task.tsk_due_date = datetime.now()
+
+                # Calculate tsk_duration jika tsk_start_date ada
+                if task.tsk_start_date and task.tsk_due_date:
+                    duration_delta = task.tsk_due_date - task.tsk_start_date
+                    duration_hours = duration_delta.total_seconds() / 3600
+                    task.tsk_duration = round(duration_hours, 2)
+
+            # Logic untuk perubahan dari ms_id = 4 ke status lain
+            elif old_status_id == 4 and ms_id != 4:
+                # Kosongkan tsk_due_date dan tsk_duration
+                task.tsk_due_date = None
+                task.tsk_duration = None
+
+            # Track history for status change
+            self._track_changes(db, task.tsk_id, task, {"tsk_ms_id": ms_id}, current_user_id)
+
             updated_tasks.append(task)
 
         # Bulk update
