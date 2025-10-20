@@ -12,6 +12,10 @@ class ProjectRepository(BaseRepository[Project]):
     def __init__(self):
         super().__init__(Project)
 
+    def get_by_code(self, db: Session, prj_code: str) -> Project:
+        """Get project by code"""
+        return db.query(Project).filter(Project.prj_code == prj_code).first()
+
     def get_project_statistics(self, db: Session, prj_id: int) -> Dict[str, Any]:
         """
         Get project statistics including task counts by status, priority, and type

@@ -3,12 +3,14 @@ atask - AURA Application
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError
 from atams.db import init_database
 from atams.logging import setup_logging_from_settings
 from atams.middleware import RequestIDMiddleware
 from atams.exceptions import setup_exception_handlers
 
 from app.core.config import settings
+from app.core.exception_handlers import custom_integrity_exception_handler
 from app.api.v1.api import api_router
 
 # Setup logging
@@ -42,6 +44,9 @@ app.add_middleware(RequestIDMiddleware)
 
 # Exception handlers
 setup_exception_handlers(app)
+
+# Override IntegrityError handler with custom one for better error messages
+app.add_exception_handler(IntegrityError, custom_integrity_exception_handler)
 
 # Include API router
 app.include_router(api_router, prefix="/api/v1")

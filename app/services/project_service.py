@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.project_schema import ProjectCreate, ProjectUpdate, Project
-from atams.exceptions import NotFoundException, ForbiddenException
+from atams.exceptions import NotFoundException, ForbiddenException, ConflictException
 
 
 class ProjectService:
@@ -84,6 +84,14 @@ class ProjectService:
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission to create project")
 
+        # Check if project code already exists
+        existing_project = self.repository.get_by_code(db, project.prj_code)
+        if existing_project:
+            raise ConflictException(
+                f"Project with code '{project.prj_code}' already exists",
+                details={"field": "prj_code", "value": project.prj_code}
+            )
+
         # Add created_by
         data = project.model_dump()
         data["created_by"] = str(current_user_id)
@@ -114,6 +122,15 @@ class ProjectService:
         db_project = self.repository.get(db, prj_id)
         if not db_project:
             raise NotFoundException(f"Project with ID {prj_id} not found")
+
+        # If updating prj_code, check if new code already exists
+        if hasattr(project, 'prj_code') and project.prj_code:
+            existing_project = self.repository.get_by_code(db, project.prj_code)
+            if existing_project and existing_project.prj_id != prj_id:
+                raise ConflictException(
+                    f"Project with code '{project.prj_code}' already exists",
+                    details={"field": "prj_code", "value": project.prj_code}
+                )
 
         update_data = project.model_dump(exclude_unset=True)
         update_data["updated_by"] = str(current_user_id)
