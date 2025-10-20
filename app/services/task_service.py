@@ -201,10 +201,6 @@ class TaskService:
         if not db_task:
             raise NotFoundException(f"Task with ID {tsk_id} not found")
 
-        # Only creator can update task
-        if db_task.created_by != str(current_user_id):
-            raise ForbiddenException("Only the creator can update this task")
-
         update_data = task.model_dump(exclude_unset=True)
         update_data["updated_by"] = str(current_user_id)
 

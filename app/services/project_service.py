@@ -115,10 +115,6 @@ class ProjectService:
         if not db_project:
             raise NotFoundException(f"Project with ID {prj_id} not found")
 
-        # Only creator can update project
-        if db_project.created_by != str(current_user_id):
-            raise ForbiddenException("Only the creator can update this project")
-
         update_data = project.model_dump(exclude_unset=True)
         update_data["updated_by"] = str(current_user_id)
 
