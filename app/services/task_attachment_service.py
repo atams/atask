@@ -17,6 +17,22 @@ class TaskAttachmentService:
         self.repository = TaskAttachmentRepository()
         self.cloudinary_service = CloudinaryService()
 
+    def _populate_attachment_url(self, db_attachment) -> dict:
+        """Populate attachment with public URL"""
+        attachment_dict = TaskAttachment.model_validate(db_attachment).model_dump()
+        # Generate public URL from public_id stored in ta_file_path
+        if db_attachment.ta_file_path:
+            # Determine resource type from file type
+            resource_type = "raw"  # Default for PDFs
+            if db_attachment.ta_file_type and "image" in db_attachment.ta_file_type.lower():
+                resource_type = "image"
+
+            attachment_dict["ta_file_url"] = self.cloudinary_service.get_file_url(
+                public_id=db_attachment.ta_file_path,
+                resource_type=resource_type
+            )
+        return attachment_dict
+
     def get_task_attachment(
         self,
         db: Session,
@@ -32,7 +48,8 @@ class TaskAttachmentService:
         if not db_task_attachment:
             raise NotFoundException(f"Task attachment with ID {ta_id} not found")
 
-        return TaskAttachment.model_validate(db_task_attachment)
+        attachment_dict = self._populate_attachment_url(db_task_attachment)
+        return TaskAttachment.model_validate(attachment_dict)
 
     def get_task_attachments(
         self,
@@ -46,7 +63,11 @@ class TaskAttachmentService:
             raise ForbiddenException("Insufficient permission to list task attachments")
 
         db_task_attachments = self.repository.get_multi(db, skip=skip, limit=limit)
-        return [TaskAttachment.model_validate(ta) for ta in db_task_attachments]
+        attachments = []
+        for ta in db_task_attachments:
+            attachment_dict = self._populate_attachment_url(ta)
+            attachments.append(TaskAttachment.model_validate(attachment_dict))
+        return attachments
 
     def get_attachments_by_task_id(
         self,
@@ -59,7 +80,11 @@ class TaskAttachmentService:
             raise ForbiddenException("Insufficient permission to view task attachments")
 
         db_attachments = self.repository.get_by_task_id(db, task_id)
-        return [TaskAttachment.model_validate(ta) for ta in db_attachments]
+        attachments = []
+        for ta in db_attachments:
+            attachment_dict = self._populate_attachment_url(ta)
+            attachments.append(TaskAttachment.model_validate(attachment_dict))
+        return attachments
 
     async def upload_attachment(
         self,
@@ -104,12 +129,11 @@ class TaskAttachmentService:
             resource_type="auto"  # Will be validated and determined by cloudinary_service
         )
 
-        # Create attachment record in database
-        # Note: We don't store cloudinary_public_id in DB, we extract it from URL when needed
+        # Create attachment record in database (store public_id as path)
         attachment_data = TaskAttachmentCreate(
             ta_tsk_id=task_id,
             ta_file_name=file.filename,
-            ta_file_path=upload_result["secure_url"],
+            ta_file_path=upload_result["public_id"],  # Store public_id, not secure_url
             ta_file_size=upload_result.get("bytes"),
             ta_file_type=file.content_type
         )
@@ -118,7 +142,8 @@ class TaskAttachmentService:
         data["created_by"] = str(current_user_id)
 
         db_task_attachment = self.repository.create(db, data)
-        return TaskAttachment.model_validate(db_task_attachment)
+        attachment_dict = self._populate_attachment_url(db_task_attachment)
+        return TaskAttachment.model_validate(attachment_dict)
 
     def update_task_attachment(
         self,
@@ -140,7 +165,8 @@ class TaskAttachmentService:
         update_data["updated_by"] = str(current_user_id)
 
         db_task_attachment = self.repository.update(db, db_task_attachment, update_data)
-        return TaskAttachment.model_validate(db_task_attachment)
+        attachment_dict = self._populate_attachment_url(db_task_attachment)
+        return TaskAttachment.model_validate(attachment_dict)
 
     def delete_task_attachment(
         self,
@@ -152,30 +178,26 @@ class TaskAttachmentService:
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission to delete task attachment")
 
-        # Get attachment first to extract public_id
+        # Get attachment first (ta_file_path contains public_id)
         db_attachment = self.repository.get(db, ta_id)
         if not db_attachment:
             raise NotFoundException(f"Task attachment with ID {ta_id} not found")
 
-        # Extract public_id from URL
-        public_id = self.cloudinary_service.extract_public_id_from_url(db_attachment.ta_file_path)
+        # Determine resource type from file type
+        resource_type = "raw"  # Default for PDFs
+        if db_attachment.ta_file_type:
+            file_type = db_attachment.ta_file_type.lower()
+            if any(img in file_type for img in ["image", "jpg", "jpeg", "png", "gif"]):
+                resource_type = "image"
+            elif any(vid in file_type for vid in ["video", "mp4", "avi", "mov"]):
+                resource_type = "video"
 
-        if public_id:
-            # Determine resource type from file type
-            resource_type = "raw"  # Default
-            if db_attachment.ta_file_type:
-                file_type = db_attachment.ta_file_type.lower()
-                if any(img in file_type for img in ["image", "jpg", "jpeg", "png", "gif"]):
-                    resource_type = "image"
-                elif any(vid in file_type for vid in ["video", "mp4", "avi", "mov"]):
-                    resource_type = "video"
-
-            # Delete from Cloudinary
-            try:
-                self.cloudinary_service.delete_file(public_id, resource_type)
-            except Exception as e:
-                # Log error but continue with database deletion
-                print(f"Warning: Failed to delete file from Cloudinary: {str(e)}")
+        # Delete from Cloudinary
+        try:
+            self.cloudinary_service.delete_file(db_attachment.ta_file_path, resource_type)
+        except Exception as e:
+            # Log error but continue with database deletion
+            print(f"Warning: Failed to delete file from Cloudinary: {str(e)}")
 
         # Delete from database
         deleted = self.repository.delete(db, ta_id)
@@ -205,7 +227,15 @@ class TaskAttachmentService:
         if not db_attachment:
             raise NotFoundException(f"Task attachment with ID {ta_id} not found")
 
-        # Return attachment object and original Cloudinary URL
-        # The endpoint will handle adding Content-Disposition header
+        # Generate Cloudinary URL from public_id
+        resource_type = "raw"  # Default for PDFs
+        if db_attachment.ta_file_type and "image" in db_attachment.ta_file_type.lower():
+            resource_type = "image"
+
+        cloudinary_url = self.cloudinary_service.get_file_url(
+            public_id=db_attachment.ta_file_path,
+            resource_type=resource_type
+        )
+
         attachment = TaskAttachment.model_validate(db_attachment)
-        return attachment, db_attachment.ta_file_path
+        return attachment, cloudinary_url

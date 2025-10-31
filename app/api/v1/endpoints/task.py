@@ -289,18 +289,18 @@ async def get_task_comments(
 
 @router.post(
     "/{tsk_id}/attachments",
-    response_model=DataResponse[TaskAttachment],
+    response_model=DataResponse[List[TaskAttachment]],
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_min_role_level(10))]
 )
-async def upload_task_attachment(
+async def upload_task_attachments(
     tsk_id: int,
-    file: UploadFile = File(..., description="File to upload"),
+    files: List[UploadFile] = File(..., description="Files to upload (supports multiple)"),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
     """
-    Upload attachment to specific task (Cloudinary integration)
+    Upload attachments to specific task - supports bulk upload (Cloudinary integration)
 
     **Required role level:** 10 (User)
 
@@ -309,26 +309,32 @@ async def upload_task_attachment(
     - Maximum size: 5MB for images, 10MB for PDF documents
     - Content-Type validation is enforced
 
+    **Note:** Files are stored as paths in database, public URLs are returned in response
+
     **Example:**
     ```
     POST /api/v1/tasks/123/attachments
     Content-Type: multipart/form-data
 
-    file: [binary file]
+    files: [binary file 1]
+    files: [binary file 2]
     ```
     """
-    attachment = await task_attachment_service.upload_attachment(
-        db,
-        file=file,
-        task_id=tsk_id,
-        current_user_role_level=current_user["role_level"],
-        current_user_id=current_user["user_id"]
-    )
+    attachments = []
+    for file in files:
+        attachment = await task_attachment_service.upload_attachment(
+            db,
+            file=file,
+            task_id=tsk_id,
+            current_user_role_level=current_user["role_level"],
+            current_user_id=current_user["user_id"]
+        )
+        attachments.append(attachment)
 
     return DataResponse(
         success=True,
-        message="Attachment uploaded successfully",
-        data=attachment
+        message=f"{len(attachments)} attachment(s) uploaded successfully",
+        data=attachments
     )
 
 
@@ -367,6 +373,37 @@ async def get_task_attachments(
         success=True,
         message="Task attachments retrieved successfully",
         data=response_data
+    )
+
+    return encrypt_response_data(response, settings)
+
+
+@router.delete(
+    "/{tsk_id}/attachments/{ta_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_min_role_level(10))]
+)
+async def delete_task_attachment(
+    tsk_id: int,
+    ta_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Delete attachment from task (removes from both database and Cloudinary)
+
+    **Required role level:** 10 (User)
+    """
+    task_attachment_service.delete_task_attachment(
+        db,
+        ta_id,
+        current_user_role_level=current_user["role_level"]
+    )
+
+    response = DataResponse(
+        success=True,
+        message="Task attachment deleted successfully",
+        data=None
     )
 
     return encrypt_response_data(response, settings)
@@ -722,3 +759,80 @@ async def advanced_task_search(
     )
 
     return encrypt_response_data(response, settings)
+
+
+# ==================== TASK THUMBNAIL ENDPOINTS ====================
+
+@router.post(
+    "/{tsk_id}/thumbnail",
+    response_model=DataResponse[Task],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_min_role_level(10))]
+)
+async def upload_task_thumbnail(
+    tsk_id: int,
+    file: UploadFile = File(..., description="Thumbnail image to upload"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Upload thumbnail for task
+
+    **Required role level:** 10 (User)
+
+    **File Validation:**
+    - Allowed types: Images only (.png, .jpg, .jpeg)
+    - Maximum size: 5MB
+    - Content-Type validation is enforced
+
+    **Example:**
+    ```
+    POST /api/v1/tasks/123/thumbnail
+    Content-Type: multipart/form-data
+
+    file: [binary image file]
+    ```
+    """
+    updated_task = await task_service.upload_thumbnail(
+        db,
+        tsk_id=tsk_id,
+        file=file,
+        current_user_role_level=current_user["role_level"],
+        current_user_id=current_user["user_id"]
+    )
+
+    return DataResponse(
+        success=True,
+        message="Task thumbnail uploaded successfully",
+        data=updated_task
+    )
+
+
+@router.delete(
+    "/{tsk_id}/thumbnail",
+    response_model=DataResponse[Task],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_min_role_level(10))]
+)
+async def delete_task_thumbnail(
+    tsk_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Delete thumbnail for task (removes from both database and Cloudinary)
+
+    **Required role level:** 10 (User)
+    """
+    updated_task = task_service.delete_thumbnail(
+        db,
+        tsk_id=tsk_id,
+        current_user_role_level=current_user["role_level"],
+        current_user_id=current_user["user_id"]
+    )
+
+    return DataResponse(
+        success=True,
+        message="Task thumbnail deleted successfully",
+        data=updated_task
+    )

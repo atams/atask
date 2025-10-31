@@ -4,57 +4,58 @@ Atask is a task management application built with FastAPI and integrated with AT
 
 ## Table of Contents
 
-* [Main Features](#main-features)
-* [Technology](#technology)
-* [Installation](#installation)
-* [Configuration](#configuration)
-* [Running the Application](#running-the-application)
-* [API Endpoints](#api-endpoints)
+-   [Main Features](#main-features)
+-   [Technology](#technology)
+-   [Installation](#installation)
+-   [Configuration](#configuration)
+-   [Running the Application](#running-the-application)
+-   [API Endpoints](#api-endpoints)
 
-  * [Master Data](#master-data)
-  * [Projects](#projects)
-  * [Tasks](#tasks)
-  * [Nested Resources](#nested-resources)
-  * [Labels](#labels)
-  * [Users](#users)
-  * [Notifications](#notifications)
-* [Explanation of Unique Parameters](#explanation-of-unique-parameters)
-* [Response Format](#response-format)
-* [Authentication & Authorization](#authentication--authorization)
-* [Validation Rules](#validation-rules)
+    -   [Master Data](#master-data)
+    -   [Projects](#projects)
+    -   [Tasks](#tasks)
+    -   [Nested Resources](#nested-resources)
+    -   [Labels](#labels)
+    -   [Users](#users)
+    -   [Notifications](#notifications)
+
+-   [Explanation of Unique Parameters](#explanation-of-unique-parameters)
+-   [Response Format](#response-format)
+-   [Authentication & Authorization](#authentication--authorization)
+-   [Validation Rules](#validation-rules)
 
 ## Main Features
 
-* **Project Management**: Full CRUD for projects with task statistics and auto-join owner information
-* **Task Management**: Task CRUD with support for sub-tasks, priority, status, and type
-* **Auto-Generated Task Code**: Task code is automatically generated based on project and task type
-* **Task Duration Auto-Calculate**: Duration is automatically calculated in hours from start_date to due_date
-* **Comments & Discussion**: Comment system with threading (reply to comment)
-* **File Attachment**: Upload and download files for each task using Cloudinary
-* **Email Notification**: Automated daily task reminder via email for assignees (scheduled with GitHub Actions)
-* **Immutable Audit Trail**: Automatically track task changes in history (log-only, cannot be changed/deleted)
-* **Labeling System**: Flexible tags/labels for task categorization with bulk operations
-* **Task Watcher**: Subscribe to receive task change notifications with bulk operations
-* **Advanced Search**: Task search with multiple filters
-* **Bulk Operations**: Update the status of multiple tasks at once
-* **User Dashboard**: Personal dashboard with statistics and activity
-* **Response Encryption**: Automatic encryption for response data (optional)
-* **Atlas SSO Integration**: Authentication integrated with ATAMS
-* **Role-based Access**: Access control based on user role level
-* **Creator-only Modification**: Only the creator can update/delete resources
+-   **Project Management**: Full CRUD for projects with task statistics and auto-join owner information
+-   **Task Management**: Task CRUD with support for sub-tasks, priority, status, and type
+-   **Auto-Generated Task Code**: Task code is automatically generated based on project and task type
+-   **Task Duration Auto-Calculate**: Duration is automatically calculated in hours from start_date to due_date
+-   **Comments & Discussion**: Comment system with threading (reply to comment)
+-   **File Attachment**: Upload and download files for each task using Cloudinary
+-   **Email Notification**: Automated daily task reminder via email for assignees (scheduled with GitHub Actions)
+-   **Immutable Audit Trail**: Automatically track task changes in history (log-only, cannot be changed/deleted)
+-   **Labeling System**: Flexible tags/labels for task categorization with bulk operations
+-   **Task Watcher**: Subscribe to receive task change notifications with bulk operations
+-   **Advanced Search**: Task search with multiple filters
+-   **Bulk Operations**: Update the status of multiple tasks at once
+-   **User Dashboard**: Personal dashboard with statistics and activity
+-   **Response Encryption**: Automatic encryption for response data (optional)
+-   **Atlas SSO Integration**: Authentication integrated with ATAMS
+-   **Role-based Access**: Access control based on user role level
+-   **Creator-only Modification**: Only the creator can update/delete resources
 
 ## Technology
 
-* **Framework**: FastAPI (Python 3.8+)
-* **Database**: PostgreSQL
-* **ORM**: SQLAlchemy
-* **Authentication**: Atlas SSO (ATAMS)
-* **Validation**: Pydantic
-* **Server**: Uvicorn
-* **File Storage**: Cloudinary
-* **Email**: SMTP (Gmail, SendGrid, etc.)
-* **Template Engine**: Jinja2
-* **Scheduling**: GitHub Actions (Serverless Cron)
+-   **Framework**: FastAPI (Python 3.8+)
+-   **Database**: PostgreSQL
+-   **ORM**: SQLAlchemy
+-   **Authentication**: Atlas SSO (ATAMS)
+-   **Validation**: Pydantic
+-   **Server**: Uvicorn
+-   **File Storage**: Cloudinary
+-   **Email**: SMTP (Gmail, SendGrid, etc.)
+-   **Template Engine**: Jinja2
+-   **Scheduling**: GitHub Actions (Serverless Cron)
 
 ## Installation
 
@@ -73,13 +74,13 @@ python -m venv venv
 
 3. **Activate the virtual environment**
 
-* Windows:
+-   Windows:
 
 ```bash
 venv\Scripts\activate
 ```
 
-* Linux/Mac:
+-   Linux/Mac:
 
 ```bash
 source venv/bin/activate
@@ -158,8 +159,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 The application will run at `http://localhost:8000`
 
-* **API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* **API Documentation (ReDoc)**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+-   **API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+-   **API Documentation (ReDoc)**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ## API Endpoints
 
@@ -167,35 +168,25 @@ Base URL: `/api/v1`
 
 ### Master Data
 
+> **Important Note:** Master data endpoints are **READ-ONLY**. Create, Update, and Delete operations have been removed to maintain data consistency.
+
 #### Master Status
 
-Endpoint to manage master data for task status (To Do, In Progress, Done, etc.).
+Endpoint to get master data for task status (To Do, In Progress, Done, etc.).
 
-* `GET /api/v1/master-statuses` - Get all statuses
-* `GET /api/v1/master-statuses/{ms_id}` - Get status by ID
-* `POST /api/v1/master-statuses` - Create new status
-* `PUT /api/v1/master-statuses/{ms_id}` - Update status (creator only)
-* `DELETE /api/v1/master-statuses/{ms_id}` - Delete status (creator only)
+-   `GET /api/v1/master-statuses` - Get all statuses with pagination
 
 #### Master Priority
 
-Endpoint to manage master data for task priority (Low, Medium, High, Critical).
+Endpoint to get master data for task priority (Low, Medium, High, Critical).
 
-* `GET /api/v1/master-priorities` - Get all priorities
-* `GET /api/v1/master-priorities/{mp_id}` - Get priority by ID
-* `POST /api/v1/master-priorities` - Create new priority
-* `PUT /api/v1/master-priorities/{mp_id}` - Update priority (creator only)
-* `DELETE /api/v1/master-priorities/{mp_id}` - Delete priority (creator only)
+-   `GET /api/v1/master-priorities` - Get all priorities with pagination
 
 #### Master Task Type
 
-Endpoint to manage master data for task types (Task, Bug, Feature, etc.).
+Endpoint to get master data for task types (Task, Bug, Feature, etc.).
 
-* `GET /api/v1/master-task-types` - Get all task types
-* `GET /api/v1/master-task-types/{mtt_id}` - Get task type by ID
-* `POST /api/v1/master-task-types` - Create new task type
-* `PUT /api/v1/master-task-types/{mtt_id}` - Update task type (creator only)
-* `DELETE /api/v1/master-task-types/{mtt_id}` - Delete task type (creator only)
+-   `GET /api/v1/master-task-types` - Get all task types with pagination
 
 ### Projects
 
@@ -209,13 +200,13 @@ POST /api/v1/projects
 
 ```json
 {
-  "prj_code": "PROJ-001",
-  "prj_name": "Website Redesign",
-  "prj_description": "Redesign company website with modern UI/UX",
-  "prj_start_date": "2025-01-15",
-  "prj_end_date": "2025-06-30",
-  "prj_u_id": 123,
-  "prj_is_active": true
+    "prj_code": "PROJ-001",
+    "prj_name": "Website Redesign",
+    "prj_description": "Redesign company website with modern UI/UX",
+    "prj_start_date": "2025-01-15",
+    "prj_end_date": "2025-06-30",
+    "prj_u_id": 123,
+    "prj_is_active": true
 }
 ```
 
@@ -249,10 +240,10 @@ PUT /api/v1/projects/{prj_id}
 
 ```json
 {
-  "prj_name": "Website Redesign v2",
-  "prj_description": "Updated description",
-  "prj_end_date": "2025-07-15",
-  "prj_is_active": true
+    "prj_name": "Website Redesign v2",
+    "prj_description": "Updated description",
+    "prj_end_date": "2025-07-15",
+    "prj_is_active": true
 }
 ```
 
@@ -278,32 +269,32 @@ GET /api/v1/projects/{prj_id}/statistics
 
 ```json
 {
-  "prj_id": 1,
-  "prj_name": "Website Redesign",
-  "total_tasks": 50,
-  "by_status": {
-    "TODO": 10,
-    "IN_PROGRESS": 15,
-    "IN_REVIEW": 5,
-    "DONE": 18,
-    "CANCELLED": 2
-  },
-  "by_priority": {
-    "LOW": 8,
-    "MEDIUM": 20,
-    "HIGH": 15,
-    "CRITICAL": 7
-  },
-  "by_type": {
-    "TASK": 25,
-    "BUG": 12,
-    "FEATURE": 8,
-    "IMPROVEMENT": 3,
-    "RESEARCH": 2
-  },
-  "overdue_tasks": 3,
-  "completion_rate": 0.36,
-  "average_completion_time": 72.5
+    "prj_id": 1,
+    "prj_name": "Website Redesign",
+    "total_tasks": 50,
+    "by_status": {
+        "TODO": 10,
+        "IN_PROGRESS": 15,
+        "IN_REVIEW": 5,
+        "DONE": 18,
+        "CANCELLED": 2
+    },
+    "by_priority": {
+        "LOW": 8,
+        "MEDIUM": 20,
+        "HIGH": 15,
+        "CRITICAL": 7
+    },
+    "by_type": {
+        "TASK": 25,
+        "BUG": 12,
+        "FEATURE": 8,
+        "IMPROVEMENT": 3,
+        "RESEARCH": 2
+    },
+    "overdue_tasks": 3,
+    "completion_rate": 0.36,
+    "average_completion_time": 72.5
 }
 ```
 
@@ -319,39 +310,39 @@ POST /api/v1/tasks
 
 ```json
 {
-  "tsk_title": "Design homepage mockup",
-  "tsk_description": "Create high-fidelity mockup for homepage redesign",
-  "tsk_prj_id": 1,
-  "tsk_ms_id": 1,
-  "tsk_mp_id": 3,
-  "tsk_mtt_id": 1,
-  "tsk_assignee_u_id": 456,
-  "tsk_reporter_u_id": 123,
-  "tsk_start_date": "2025-01-20T09:00:00Z",
-  "tsk_parent_tsk_id": null
+    "tsk_title": "Design homepage mockup",
+    "tsk_description": "Create high-fidelity mockup for homepage redesign",
+    "tsk_prj_id": 1,
+    "tsk_ms_id": 1,
+    "tsk_mp_id": 3,
+    "tsk_mtt_id": 1,
+    "tsk_assignee_u_id": 456,
+    "tsk_reporter_u_id": 123,
+    "tsk_start_date": "2025-01-20T09:00:00Z",
+    "tsk_parent_tsk_id": null
 }
 ```
 
 **Important Notes:**
 
-* ✅ `tsk_code` is **auto-generated** (format: `{prj_id}/{task_type_code}/{number}`)
-* ❌ `tsk_due_date` **cannot be set at creation** (only the assignee can set it later)
-* ❌ `tsk_duration` **is auto-calculated** (read-only, in hours)
+-   ✅ `tsk_code` is **auto-generated** (format: `{prj_id}/{task_type_code}/{number}`)
+-   ❌ `tsk_due_date` **cannot be set at creation** (only the assignee can set it later)
+-   ❌ `tsk_duration` **is auto-calculated** (read-only, in hours)
 
 **Response:** `201 Created` with joins:
 
 ```json
 {
-  "tsk_code": "001/TASK/001",
-  "tsk_title": "Design homepage mockup",
-  "tsk_duration": null,
-  "tsk_project_name": "Website Redesign",
-  "tsk_status_name": "To Do",
-  "tsk_priority_name": "High",
-  "tsk_priority_color": "#FF9800",
-  "tsk_type_name": "Task",
-  "tsk_assignee_name": "John Doe",
-  "tsk_reporter_name": "Jane Smith"
+    "tsk_code": "001/TASK/001",
+    "tsk_title": "Design homepage mockup",
+    "tsk_duration": null,
+    "tsk_project_name": "Website Redesign",
+    "tsk_status_name": "To Do",
+    "tsk_priority_name": "High",
+    "tsk_priority_color": "#FF9800",
+    "tsk_type_name": "Task",
+    "tsk_assignee_name": "John Doe",
+    "tsk_reporter_name": "Jane Smith"
 }
 ```
 
@@ -383,23 +374,23 @@ PUT /api/v1/tasks/{tsk_id}
 
 ```json
 {
-  "tsk_title": "Design homepage mockup v2",
-  "tsk_description": "Updated description",
-  "tsk_ms_id": 2,
-  "tsk_mp_id": 4,
-  "tsk_assignee_u_id": 789,
-  "tsk_start_date": "2025-01-20T09:00:00Z",
-  "tsk_due_date": "2025-01-25T17:00:00Z"
+    "tsk_title": "Design homepage mockup v2",
+    "tsk_description": "Updated description",
+    "tsk_ms_id": 2,
+    "tsk_mp_id": 4,
+    "tsk_assignee_u_id": 789,
+    "tsk_start_date": "2025-01-20T09:00:00Z",
+    "tsk_due_date": "2025-01-25T17:00:00Z"
 }
 ```
 
 **Special Rules:**
 
-* ✅ `tsk_due_date` **can only be set by the assignee** (or null to clear)
-* ✅ `due_date >= start_date` (validation error if due_date is earlier)
-* ✅ `tsk_duration` **auto-calculated in hours** from (due_date - start_date)
-* ❌ `tsk_duration` **cannot be manually set** (read-only)
-* ❌ Non-creator **cannot update task** (403 Forbidden)
+-   ✅ `tsk_due_date` **can only be set by the assignee** (or null to clear)
+-   ✅ `due_date >= start_date` (validation error if due_date is earlier)
+-   ✅ `tsk_duration` **auto-calculated in hours** from (due_date - start_date)
+-   ❌ `tsk_duration` **cannot be manually set** (read-only)
+-   ❌ Non-creator **cannot update task** (403 Forbidden)
 
 **Response:** `200 OK` or `400 Bad Request` or `403 Forbidden`
 
@@ -423,8 +414,8 @@ PATCH /api/v1/tasks/bulk-update-status
 
 ```json
 {
-  "task_ids": [1, 2, 3, 5],
-  "ms_id": 4
+    "task_ids": [1, 2, 3, 5],
+    "ms_id": 4
 }
 ```
 
@@ -440,17 +431,17 @@ POST /api/v1/tasks/search
 
 ```json
 {
-  "keyword": "design",
-  "project_ids": [1, 2],
-  "status_ids": [1, 2],
-  "priority_ids": [3, 4],
-  "type_ids": [1],
-  "assignee_ids": [456],
-  "reporter_ids": [123],
-  "date_from": "2025-01-01",
-  "date_to": "2025-12-31",
-  "skip": 0,
-  "limit": 20
+    "keyword": "design",
+    "project_ids": [1, 2],
+    "status_ids": [1, 2],
+    "priority_ids": [3, 4],
+    "type_ids": [1],
+    "assignee_ids": [456],
+    "reporter_ids": [123],
+    "date_from": "2025-01-01",
+    "date_to": "2025-12-31",
+    "skip": 0,
+    "limit": 20
 }
 ```
 
@@ -471,8 +462,8 @@ POST /api/v1/tasks/{tsk_id}/comments
 
 ```json
 {
-  "tc_comment": "This looks great! Please add the color scheme.",
-  "tc_parent_tc_id": null
+    "tc_comment": "This looks great! Please add the color scheme.",
+    "tc_parent_tc_id": null
 }
 ```
 
@@ -490,17 +481,17 @@ GET /api/v1/tasks/{tsk_id}/history?skip=0&limit=100&field_name=status
 
 **Important:**
 
-* 📝 History is an **immutable audit log**
-* ✅ **Auto-created** when a task is updated
-* ✅ **Only GET** endpoint available
-* ❌ **NO POST/PUT/DELETE** endpoints (cannot manually create/update/delete)
-* ❌ **NO updated_by/updated_at** fields (log is immutable)
+-   📝 History is an **immutable audit log**
+-   ✅ **Auto-created** when a task is updated
+-   ✅ **Only GET** endpoint available
+-   ❌ **NO POST/PUT/DELETE** endpoints (cannot manually create/update/delete)
+-   ❌ **NO updated_by/updated_at** fields (log is immutable)
 
 **Response:** History list with auto-joins: `th_task_title`, `th_user_name`
 
 **Tracked Fields:**
 
-* `title`, `description`, `status`, `priority`, `assignee`, `due_date`, `start_date`
+-   `title`, `description`, `status`, `priority`, `assignee`, `due_date`, `start_date`
 
 #### Task Labels
 
@@ -512,7 +503,7 @@ POST /api/v1/tasks/{tsk_id}/labels
 
 ```json
 {
-  "tl_lbl_id": 1
+    "tl_lbl_id": 1
 }
 ```
 
@@ -538,7 +529,7 @@ POST /api/v1/tasks/{tsk_id}/watchers
 
 ```json
 {
-  "tw_u_id": 789
+    "tw_u_id": 789
 }
 ```
 
@@ -556,65 +547,73 @@ DELETE /api/v1/tasks/{tsk_id}/watchers/{u_ids}
 
 #### Task Attachments
 
-**Upload File Attachment**
+**Upload File Attachments (Bulk Upload)**
 
 ```http
-POST /api/v1/attachments?task_id={tsk_id}
+POST /api/v1/tasks/{tsk_id}/attachments
 Content-Type: multipart/form-data
 ```
 
 **Request:**
 
-* Form field `file`: File to upload
-* Query param `task_id`: Task ID
+-   Form field `files`: Multiple files to upload (supports bulk upload)
+-   Path param `tsk_id`: Task ID
 
 **Validation:**
 
-* Allowed types: PDF (.pdf), Images (.png, .jpg, .jpeg)
-* Max size: 5MB (images), 10MB (PDF)
-* Files uploaded to Cloudinary
+-   Allowed types: PDF (.pdf), Images (.png, .jpg, .jpeg)
+-   Max size: 5MB (images), 10MB (PDF)
+-   Files uploaded to Cloudinary
 
-**Get All Attachments**
+**Response:** Returns list of uploaded attachments with public URLs
 
-```http
-GET /api/v1/attachments?skip=0&limit=100
-```
-
-**Get Attachment by ID**
+**Get Task Attachments**
 
 ```http
-GET /api/v1/attachments/{ta_id}
+GET /api/v1/tasks/{tsk_id}/attachments
 ```
 
-**Update Attachment Metadata**
+**Response:** Returns all attachments for the task with total size
+
+**Delete Task Attachment**
 
 ```http
-PUT /api/v1/attachments/{ta_id}
+DELETE /api/v1/tasks/{tsk_id}/attachments/{ta_id}
 ```
 
-**Request Body:**
+Deletes attachment from both database and Cloudinary.
 
-```json
-{
-  "ta_file_name": "new_filename.pdf"
-}
-```
+> **Note:** Standalone attachment endpoints (`/api/v1/attachments`) have been removed. All attachment operations are now nested under tasks.
 
-**Delete Attachment**
+#### Task Thumbnail
+
+**Upload Task Thumbnail**
 
 ```http
-DELETE /api/v1/attachments/{ta_id}
+POST /api/v1/tasks/{tsk_id}/thumbnail
+Content-Type: multipart/form-data
 ```
 
-Deletes from the database and Cloudinary.
+**Request:**
 
-**Download Attachment**
+-   Form field `file`: Single image file
+-   Path param `tsk_id`: Task ID
+
+**Validation:**
+
+-   Allowed types: Images only (.png, .jpg, .jpeg)
+-   Max size: 5MB
+-   Files uploaded to Cloudinary
+
+**Response:** Returns updated task with `tsk_thumbnail_url` field
+
+**Delete Task Thumbnail**
 
 ```http
-GET /api/v1/attachments/{ta_id}/download
+DELETE /api/v1/tasks/{tsk_id}/thumbnail
 ```
 
-Forces download with the proper Content-Disposition header.
+Removes thumbnail from both database and Cloudinary. Task's `tsk_thumbnail` and `tsk_thumbnail_url` will be set to null.
 
 ### Labels
 
@@ -628,9 +627,9 @@ POST /api/v1/labels
 
 ```json
 {
-  "lbl_name": "frontend",
-  "lbl_color": "#3498db",
-  "lbl_description": "Frontend related tasks"
+    "lbl_name": "frontend",
+    "lbl_color": "#3498db",
+    "lbl_description": "Frontend related tasks"
 }
 ```
 
@@ -700,23 +699,23 @@ Headers:
 
 **Logic:**
 
-* Find tasks where `tsk_start_date = today`
-* Filter tasks that have an assignee (`tsk_assignee_u_id NOT NULL`)
-* Send HTML email to the assignee
+-   Find tasks where `tsk_start_date = today`
+-   Filter tasks that have an assignee (`tsk_assignee_u_id NOT NULL`)
+-   Send HTML email to the assignee
 
 **Response:**
 
 ```json
 {
-  "success": true,
-  "message": "Daily reminders processed: 10 sent, 0 failed",
-  "data": {
-    "total_tasks": 10,
-    "emails_sent": 10,
-    "emails_failed": 0,
-    "success_rate": 100.0,
-    "failed_tasks": []
-  }
+    "success": true,
+    "message": "Daily reminders processed: 10 sent, 0 failed",
+    "data": {
+        "total_tasks": 10,
+        "emails_sent": 10,
+        "emails_failed": 0,
+        "success_rate": 100.0,
+        "failed_tasks": []
+    }
 }
 ```
 
@@ -732,9 +731,9 @@ GET /api/v1/notifications/health
 
 ```json
 {
-  "status": "ok",
-  "email_configured": true,
-  "cron_api_key_configured": true
+    "status": "ok",
+    "email_configured": true,
+    "cron_api_key_configured": true
 }
 ```
 
@@ -742,21 +741,21 @@ GET /api/v1/notifications/health
 
 The email notification contains:
 
-* Greeting with the assignee's name
-* Task code & title
-* Project name & code
-* Status, Priority, Type
-* Reporter name
-* Start date
-* Task description (if any)
-* Beautiful responsive HTML design
+-   Greeting with the assignee's name
+-   Task code & title
+-   Project name & code
+-   Status, Priority, Type
+-   Reporter name
+-   Start date
+-   Task description (if any)
+-   Beautiful responsive HTML design
 
 #### GitHub Actions Setup
 
 1. **Add GitHub Secrets:**
 
-   * `APP_URL`: Your application URL (e.g., `https://your-app.vercel.app`)
-   * `CRON_API_KEY`: Same value as the env variable `CRON_API_KEY`
+    - `APP_URL`: Your application URL (e.g., `https://your-app.vercel.app`)
+    - `CRON_API_KEY`: Same value as the env variable `CRON_API_KEY`
 
 2. **Workflow File:** `.github/workflows/daily-task-reminder.yml`
 
@@ -805,6 +804,8 @@ The email notification contains:
 | `tsk_type_name`      | String    | **Auto-joined** type name                                  |
 | `tsk_assignee_name`  | String    | **Auto-joined** assignee name                              |
 | `tsk_reporter_name`  | String    | **Auto-joined** reporter name                              |
+| `tsk_thumbnail`      | String    | Cloudinary public_id for thumbnail (internal use)          |
+| `tsk_thumbnail_url`  | String    | **Auto-generated** public URL for thumbnail image          |
 
 ### History Parameters
 
@@ -877,14 +878,14 @@ The token is obtained from Atlas SSO. Every request will be validated and will r
 
 **Creator-Only Operations:**
 
-* ⚠️ **UPDATE**: Only the creator (`created_by == current_user_id`) can update
-* ⚠️ **DELETE**: Only the creator (`created_by == current_user_id`) can delete
-* Applies to: Projects, Tasks, Master Data
+-   ⚠️ **UPDATE**: Only the creator (`created_by == current_user_id`) can update
+-   ⚠️ **DELETE**: Only the creator (`created_by == current_user_id`) can delete
+-   Applies to: Projects, Tasks, Master Data
 
 **Special Task Rules:**
 
-* ⚠️ **tsk_due_date**: Only the assignee (`tsk_assignee_u_id == current_user_id`) can set/update
-* ⚠️ **tsk_duration**: Read-only, auto-calculated (cannot be manually set)
+-   ⚠️ **tsk_due_date**: Only the assignee (`tsk_assignee_u_id == current_user_id`) can set/update
+-   ⚠️ **tsk_duration**: Read-only, auto-calculated (cannot be manually set)
 
 ## Validation Rules
 
@@ -917,10 +918,10 @@ The token is obtained from Atlas SSO. Every request will be validated and will r
 
 Every table has audit fields:
 
-* `created_by` - ID of the user who created the record
-* `created_at` - Creation timestamp
-* `updated_by` - ID of the user who last updated the record
-* `updated_at` - Last update timestamp
+-   `created_by` - ID of the user who created the record
+-   `created_at` - Creation timestamp
+-   `updated_by` - ID of the user who last updated the record
+-   `updated_at` - Last update timestamp
 
 **Exception:** The `task_history` table only has `created_by` and `created_at` (immutable log).
 
@@ -936,9 +937,9 @@ Response data can be automatically encrypted if `ENCRYPTION_ENABLED=true`. The c
 
 3. **Auto-Generated Fields**:
 
-   * Task code auto-generated
-   * Task duration auto-calculated
-   * History auto-created on updates
+    - Task code auto-generated
+    - Task duration auto-calculated
+    - History auto-created on updates
 
 4. **Auto-Joins**: All foreign keys are auto-joined with related data (user name, project name, etc.)
 
@@ -952,9 +953,9 @@ Response data can be automatically encrypted if `ENCRYPTION_ENABLED=true`. The c
 
 9. **Email Notifications**:
 
-   * Automated daily reminders via GitHub Actions
-   * Triggered at 9 AM (WIB)
-   * Beautiful HTML email template
-   * Supports Gmail, SendGrid, Mailgun, and other SMTP providers
+    - Automated daily reminders via GitHub Actions
+    - Triggered at 9 AM (WIB)
+    - Beautiful HTML email template
+    - Supports Gmail, SendGrid, Mailgun, and other SMTP providers
 
 10. **Serverless Deployment**: Compatible with Vercel serverless deployment

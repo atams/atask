@@ -21,6 +21,7 @@ class TaskBase(BaseModel):
     tsk_due_date: Optional[datetime] = None
     tsk_duration: Optional[Decimal] = None  # Duration in hours (auto-calculated, read-only)
     tsk_parent_tsk_id: Optional[int] = None
+    tsk_thumbnail: Optional[str] = None
 
 
 class TaskCreate(BaseModel):
@@ -87,3 +88,4 @@ class Task(TaskInDB):
     tsk_type_name: Optional[str] = None
     tsk_assignee_name: Optional[str] = None
     tsk_reporter_name: Optional[str] = None
+    tsk_thumbnail_url: Optional[str] = None

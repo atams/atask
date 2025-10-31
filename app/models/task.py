@@ -25,6 +25,7 @@ class Task(Base):
     tsk_due_date = Column(DateTime(timezone=True), nullable=True)
     tsk_duration = Column(Numeric(10, 2), nullable=True)
     tsk_parent_tsk_id = Column(Integer, ForeignKey("atask.task.tsk_id"), nullable=True)
+    tsk_thumbnail = Column(Text, nullable=True)
     created_by = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_by = Column(String(100), nullable=True)

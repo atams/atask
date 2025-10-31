@@ -4,6 +4,7 @@ Business logic layer with role-based permission validation
 """
 from typing import List
 from sqlalchemy.orm import Session
+from fastapi import UploadFile
 
 from app.repositories.task_repository import TaskRepository
 from app.repositories.project_repository import ProjectRepository
@@ -13,6 +14,7 @@ from app.repositories.master_task_type_repository import MasterTaskTypeRepositor
 from app.repositories.task_history_repository import TaskHistoryRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.task_schema import TaskCreate, TaskUpdate, Task
+from app.services.cloudinary_service import CloudinaryService
 from atams.exceptions import NotFoundException, ForbiddenException, BadRequestException
 
 
@@ -25,6 +27,7 @@ class TaskService:
         self.master_task_type_repository = MasterTaskTypeRepository()
         self.history_repository = TaskHistoryRepository()
         self.user_repository = UserRepository()
+        self.cloudinary_service = CloudinaryService()
 
     def _populate_task_joins(self, db: Session, db_task) -> dict:
         """Populate task with joined data from related tables"""
@@ -66,6 +69,13 @@ class TaskService:
             reporter = self.user_repository.get_user_by_id(db, db_task.tsk_reporter_u_id)
             if reporter:
                 task_dict["tsk_reporter_name"] = reporter.get("u_full_name")
+
+        # Set thumbnail URL (generate from public_id stored in tsk_thumbnail)
+        if db_task.tsk_thumbnail:
+            task_dict["tsk_thumbnail_url"] = self.cloudinary_service.get_file_url(
+                public_id=db_task.tsk_thumbnail,
+                resource_type="image"
+            )
 
         return task_dict
 
@@ -344,3 +354,121 @@ class TaskService:
             "updated_count": len(updated_tasks),
             "task_ids": task_ids
         }
+
+    async def upload_thumbnail(
+        self,
+        db: Session,
+        tsk_id: int,
+        file: UploadFile,
+        current_user_role_level: int,
+        current_user_id: int
+    ) -> Task:
+        """
+        Upload thumbnail for task
+
+        Validation rules:
+        - Only PNG, JPG, JPEG images are allowed
+        - Maximum file size: 5MB
+
+        Args:
+            db: Database session
+            tsk_id: Task ID
+            file: Uploaded file
+            current_user_role_level: Current user's role level
+            current_user_id: Current user's ID
+
+        Returns:
+            Updated Task
+
+        Raises:
+            ForbiddenException: If user lacks permission
+            NotFoundException: If task not found
+            BadRequestException: If file validation fails
+        """
+        if current_user_role_level < 10:
+            raise ForbiddenException("Insufficient permission to upload thumbnail")
+
+        # Get task
+        db_task = self.repository.get(db, tsk_id)
+        if not db_task:
+            raise NotFoundException(f"Task with ID {tsk_id} not found")
+
+        # Delete old thumbnail from Cloudinary if exists (tsk_thumbnail contains public_id)
+        if db_task.tsk_thumbnail:
+            try:
+                self.cloudinary_service.delete_file(db_task.tsk_thumbnail, resource_type="image")
+            except Exception as e:
+                print(f"Warning: Failed to delete old thumbnail from Cloudinary: {str(e)}")
+
+        # Upload new thumbnail to Cloudinary
+        folder = f"atask/task-{tsk_id}/thumbnail"
+
+        upload_result = await self.cloudinary_service.upload_file(
+            file=file,
+            folder=folder,
+            resource_type="image"
+        )
+
+        # Update task thumbnail path (store public_id, not full URL)
+        update_data = {
+            "tsk_thumbnail": upload_result["public_id"],
+            "updated_by": str(current_user_id)
+        }
+
+        db_task = self.repository.update(db, db_task, update_data)
+
+        # Populate joined data
+        task_dict = self._populate_task_joins(db, db_task)
+        return Task.model_validate(task_dict)
+
+    def delete_thumbnail(
+        self,
+        db: Session,
+        tsk_id: int,
+        current_user_role_level: int,
+        current_user_id: int
+    ) -> Task:
+        """
+        Delete thumbnail for task
+
+        Args:
+            db: Database session
+            tsk_id: Task ID
+            current_user_role_level: Current user's role level
+            current_user_id: Current user's ID
+
+        Returns:
+            Updated Task
+
+        Raises:
+            ForbiddenException: If user lacks permission
+            NotFoundException: If task not found or no thumbnail exists
+        """
+        if current_user_role_level < 10:
+            raise ForbiddenException("Insufficient permission to delete thumbnail")
+
+        # Get task
+        db_task = self.repository.get(db, tsk_id)
+        if not db_task:
+            raise NotFoundException(f"Task with ID {tsk_id} not found")
+
+        if not db_task.tsk_thumbnail:
+            raise NotFoundException(f"Task {tsk_id} does not have a thumbnail")
+
+        # Delete from Cloudinary (tsk_thumbnail contains public_id)
+        try:
+            self.cloudinary_service.delete_file(db_task.tsk_thumbnail, resource_type="image")
+        except Exception as e:
+            print(f"Warning: Failed to delete thumbnail from Cloudinary: {str(e)}")
+
+        # Update task to remove thumbnail
+        update_data = {
+            "tsk_thumbnail": None,
+            "updated_by": str(current_user_id)
+        }
+
+        db_task = self.repository.update(db, db_task, update_data)
+
+        # Populate joined data
+        task_dict = self._populate_task_joins(db, db_task)
+        return Task.model_validate(task_dict)

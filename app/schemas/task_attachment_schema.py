@@ -57,4 +57,4 @@ class TaskAttachmentInDB(TaskAttachmentBase):
 
 
 class TaskAttachment(TaskAttachmentInDB):
-    pass
+    ta_file_url: Optional[str] = None  # Public URL for file access
