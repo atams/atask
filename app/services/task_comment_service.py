@@ -63,18 +63,15 @@ class TaskCommentService:
         limit: int = 100,
         current_user_role_level: int = 0
     ) -> List[TaskComment]:
-        """Get list of task comments with pagination"""
+        """Get list of task comments with pagination (optimized with single JOIN query)"""
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission to list task comments")
 
-        db_task_comments = self.repository.get_multi(db, skip=skip, limit=limit)
+        # Use optimized query with JOINs to avoid N+1 problem
+        # This reduces 201 queries (for limit=100) to just 1 query!
+        comments_data = self.repository.get_comments_with_joins(db, skip=skip, limit=limit)
 
-        # Populate joined data for each task comment
-        comments = []
-        for db_comment in db_task_comments:
-            comment_dict = self._populate_comment_joins(db, db_comment)
-            comments.append(TaskComment.model_validate(comment_dict))
-
+        comments = [TaskComment.model_validate(comment_dict) for comment_dict in comments_data]
         return comments
 
     def create_task_comment(

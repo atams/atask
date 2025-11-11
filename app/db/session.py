@@ -7,11 +7,19 @@ from typing import Generator
 
 from app.core.config import settings
 
-# Create engine
+# Create engine with optimized connection pooling
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_pre_ping=True,
-    echo=settings.DEBUG
+    pool_pre_ping=True,  # Verify connections before using them
+    pool_size=10,  # Number of permanent connections (increased from default 5)
+    max_overflow=20,  # Additional connections when pool is full (increased from default 10)
+    pool_recycle=3600,  # Recycle connections after 1 hour
+    pool_timeout=30,  # Timeout for getting connection from pool
+    echo=settings.DEBUG,
+    # Performance: Use faster connection creation
+    connect_args={
+        "options": "-c statement_timeout=30000"  # 30 second query timeout
+    }
 )
 
 # Create session factory

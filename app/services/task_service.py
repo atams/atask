@@ -139,16 +139,23 @@ class TaskService:
         limit: int = 100,
         current_user_role_level: int = 0
     ) -> List[Task]:
-        """Get list of tasks with pagination"""
+        """Get list of tasks with pagination (optimized with single JOIN query)"""
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission to list tasks")
 
-        db_tasks = self.repository.get_multi(db, skip=skip, limit=limit)
+        # Use optimized query with JOINs to avoid N+1 problem
+        # This reduces 6001 queries (for limit=1000) to just 1 query!
+        tasks_data = self.repository.get_tasks_with_joins(db, skip=skip, limit=limit)
 
-        # Populate joined data for each task
+        # Process thumbnail URLs if needed
         tasks = []
-        for db_task in db_tasks:
-            task_dict = self._populate_task_joins(db, db_task)
+        for task_dict in tasks_data:
+            # Add thumbnail URL if thumbnail exists
+            if task_dict.get("tsk_thumbnail"):
+                task_dict["tsk_thumbnail_url"] = self.cloudinary_service.get_file_url(
+                    public_id=task_dict["tsk_thumbnail"],
+                    resource_type="image"
+                )
             tasks.append(Task.model_validate(task_dict))
 
         return tasks

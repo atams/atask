@@ -47,30 +47,15 @@ class ProjectService:
         limit: int = 100,
         current_user_role_level: int = 0
     ) -> List[Project]:
-        """Get list of projects with pagination"""
+        """Get list of projects with pagination (optimized with single JOIN query)"""
         if current_user_role_level < 10:
             raise ForbiddenException("Insufficient permission to list projects")
 
-        db_projects = self.repository.get_multi(db, skip=skip, limit=limit)
+        # Use optimized query with JOIN to avoid N+1 problem
+        # This reduces 101 queries (for limit=100) to just 1 query!
+        projects_data = self.repository.get_projects_with_joins(db, skip=skip, limit=limit)
 
-        # Get all unique owner IDs
-        owner_ids = list(set([prj.prj_u_id for prj in db_projects if prj.prj_u_id]))
-
-        # Fetch all owners in one query (batch)
-        owner_map = {}
-        for owner_id in owner_ids:
-            owner = self.user_repository.get_user_by_id(db, owner_id)
-            if owner:
-                owner_map[owner_id] = owner.get("u_full_name")
-
-        # Build project list with owner names
-        projects = []
-        for prj in db_projects:
-            project_dict = Project.model_validate(prj).model_dump()
-            if prj.prj_u_id and prj.prj_u_id in owner_map:
-                project_dict["prj_owner_name"] = owner_map[prj.prj_u_id]
-            projects.append(Project.model_validate(project_dict))
-
+        projects = [Project.model_validate(project_dict) for project_dict in projects_data]
         return projects
 
     def create_project(

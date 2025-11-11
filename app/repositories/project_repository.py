@@ -12,6 +12,27 @@ class ProjectRepository(BaseRepository[Project]):
     def __init__(self):
         super().__init__(Project)
 
+    def get_projects_with_joins(self, db: Session, skip: int = 0, limit: int = 100):
+        """
+        Get projects with owner data in single query (optimized for performance)
+        This eliminates N+1 query problem by using JOIN
+        """
+        query = """
+            SELECT
+                p.prj_id, p.prj_code, p.prj_name, p.prj_description,
+                p.prj_start_date, p.prj_end_date, p.prj_u_id, p.prj_is_active,
+                p.created_by, p.created_at, p.updated_by, p.updated_at,
+                -- Joined data
+                u.u_full_name as prj_owner_name
+            FROM atask.project p
+            LEFT JOIN pt_atams_indonesia.users u ON p.prj_u_id = u.u_id
+            ORDER BY p.created_at DESC
+            LIMIT :limit OFFSET :skip
+        """
+
+        params = {"skip": skip, "limit": limit}
+        return self.execute_raw_sql_dict(db, query, params)
+
     def get_by_code(self, db: Session, prj_code: str) -> Project:
         """Get project by code"""
         return db.query(Project).filter(Project.prj_code == prj_code).first()
