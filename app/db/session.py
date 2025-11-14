@@ -16,10 +16,6 @@ engine = create_engine(
     pool_recycle=3600,  # Recycle connections after 1 hour
     pool_timeout=30,  # Timeout for getting connection from pool
     echo=settings.DEBUG,
-    # Performance: Use faster connection creation
-    connect_args={
-        "options": "-c statement_timeout=30000"  # 30 second query timeout
-    }
 )
 
 # Create session factory
